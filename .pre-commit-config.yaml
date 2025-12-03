@@ -1,0 +1,50 @@
+# Pre-commit hooks for AI Translator
+# See https://pre-commit.com for more information
+
+repos:
+  # 通用文件检查
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      # 确保文件以换行符结尾
+      - id: end-of-file-fixer
+        name: 修复文件末尾换行符
+        types: [swift]
+
+      # 删除尾随空格
+      - id: trailing-whitespace
+        name: 删除尾随空格
+        types: [swift]
+
+
+#   # SwiftLint
+#   - repo: https://github.com/realm/SwiftLint
+#     rev: 0.54.0
+#     hooks:
+#       - id: swiftlint
+#         name: SwiftLint
+#         entry: swiftlint
+#         language: system
+#         types: [swift]
+#         args: [--fix, --format]
+#         # 自动修复可修复的问题
+
+#   # EditorConfig 检查
+#   - repo: https://github.com/editorconfig-checker/editorconfig-checker.python
+#     rev: 2.7.3
+#     hooks:
+#       - id: editorconfig-checker
+#         name: EditorConfig 检查
+#         alias: ec
+# # 排除的文件和目录
+# exclude: |
+#   (?x)^(
+#       .*\.xcodeproj/.*|
+#       .*\.xcworkspace/.*|
+#       .*\.xcassets/.*|
+#       build/.*|
+#       DerivedData/.*|
+#       \.build/.*|
+#       Pods/.*|
+#       Carthage/.*
+#   )$

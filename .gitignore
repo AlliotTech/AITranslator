@@ -1,0 +1,103 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
+## Build generated
+build/
+DerivedData/
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+xcuserdata/
+*.xccheckout
+*.moved-aside
+*.xcuserstate
+*.xcscmblueprint
+*.xcscheme
+!xcshareddata/xcschemes/*.xcscheme
+
+# Xcode Patch
+*.xcodeproj/*
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/xcshareddata/
+*.xcworkspace/*
+!*.xcworkspace/contents.xcworkspacedata
+/*.gcno
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# CocoaPods
+Pods/
+*.podspec
+.cocoapods/
+
+# Carthage
+Carthage/Build/
+Carthage/Checkouts/
+
+# fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/**/*.png
+fastlane/test_output
+
+# Code Injection
+iOSInjectionProject/
+
+# AppCode
+.idea/
+
+# SwiftLint
+.swiftlint.yml.cache
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# Swift Package Manager artifacts
+.swiftpm/config/registries.json
+.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+.netrc
+
+# Backup files
+*~.nib
+*.swp
+*.bak
+*.tmp
+*.orig
+
+# Logs
+*.log
+
+# Sensitive data
+*.pem
+*.p12
+*.cer
+*.mobileprovision
+.env
+secrets.yml
+
+# Test results
+*.coverage
+*.lcov
+.coverage
+htmlcov/
+
+# Archives
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# App packaging
+*.app
+*.dmg
+*.pkg

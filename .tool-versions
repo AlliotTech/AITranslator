@@ -1,0 +1,8 @@
+# asdf tool versions for AI Translator
+# Install plugins:
+#   asdf plugin add swift
+#   asdf plugin add swiftlint
+
+swift 5.9.0
+swiftlint 0.54.0
+pre-commit 4.3.0
