@@ -67,6 +67,18 @@ struct HistoryWindow: View {
         } message: {
             Text(L10n.tr("history.import.optionsMessage", lang: preferences.appLanguage))
         }
+        .alert(
+            L10n.tr("history.confirm.clearTitle", lang: preferences.appLanguage),
+            isPresented: $showClearAllConfirm
+        ) {
+            Button(L10n.tr("history.confirm.cancel", lang: preferences.appLanguage), role: .cancel) {}
+            Button(L10n.tr("history.button.clear", lang: preferences.appLanguage), role: .destructive) {
+                historyManager.clearAll()
+                selectedRecord = nil
+            }
+        } message: {
+            Text(L10n.tr("history.confirm.clearMessage", lang: preferences.appLanguage))
+        }
     }
 
     // MARK: - List Panel
@@ -320,18 +332,6 @@ struct HistoryWindow: View {
             }
         } message: {
             Text(L10n.tr("history.confirm.deleteMessage", lang: preferences.appLanguage))
-        }
-        .alert(
-            L10n.tr("history.confirm.clearTitle", lang: preferences.appLanguage),
-            isPresented: $showClearAllConfirm
-        ) {
-            Button(L10n.tr("history.confirm.cancel", lang: preferences.appLanguage), role: .cancel) {}
-            Button(L10n.tr("history.button.clear", lang: preferences.appLanguage), role: .destructive) {
-                historyManager.clearAll()
-                selectedRecord = nil
-            }
-        } message: {
-            Text(L10n.tr("history.confirm.clearMessage", lang: preferences.appLanguage))
         }
     }
 
