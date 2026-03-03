@@ -69,7 +69,7 @@ struct RightOutputPane: View {
                                         ProgressView()
                                             .scaleEffect(0.7)
                                             .frame(width: 16, height: 16)
-                                        Text("正在接收大量内容（>3000字），完成后将显示完整结果...")
+                                        Text("正在接收大量内容，完成后将显示完整结果...")
                                             .font(.caption)
                                             .foregroundColor(.secondary)
                                     }
@@ -121,17 +121,26 @@ struct RightOutputPane: View {
                         proxy.scrollTo("OUTPUT_BOTTOM", anchor: .bottom)
                     }
                 }
-                // 简化的定时滚动：只在短文本时滚动
+                // 定时兜底滚动
                 .onReceive(Timer.publish(every: 1.0, on: .main, in: .common).autoconnect()) { _ in
-                    // 只在流式传输 + 短文本时才滚动
-                    if viewModel.session.isStreaming && viewModel.session.output.count < 3000 {
+                    if viewModel.session.isStreaming && viewModel.session.output.count < 20000 {
                         let now = Date()
-                        // 限制滚动频率：至少间隔0.5秒
                         if now.timeIntervalSince(lastScrollTime) > 0.5 {
                             lastScrollTime = now
                             proxy.scrollTo("OUTPUT_BOTTOM", anchor: .bottom)
                         }
                     }
+                }
+                // 事件驱动滚动：流式输出变化时也尝试跟随（带节流）
+                .onChange(of: viewModel.session.output.count) { _, _ in
+                    guard viewModel.session.isStreaming else { return }
+                    guard viewModel.session.output.count < 20000 else { return }
+
+                    let now = Date()
+                    guard now.timeIntervalSince(lastScrollTime) > 0.15 else { return }
+                    lastScrollTime = now
+
+                    proxy.scrollTo("OUTPUT_BOTTOM", anchor: .bottom)
                 }
                 .onChange(of: viewModel.copyFeedbackToken) { _, _ in
                     withAnimation(Animations.bouncySpring) { copiedFlash = true }

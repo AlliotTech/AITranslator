@@ -126,16 +126,16 @@ final class AppViewModel: ObservableObject {
 
     // 更新间隔配置
     private let shortTextIntervalMs: UInt64 = 50    // 短文本：20fps
-    private let mediumTextIntervalMs: UInt64 = 200  // 中等文本：5fps
-    private let longTextIntervalMs: UInt64 = 1000   // 长文本：1fps（极低频率）
+    private let mediumTextIntervalMs: UInt64 = 160  // 中等文本：~6fps
+    private let longTextIntervalMs: UInt64 = 300    // 长文本：~3fps（降低卡顿但保持实时感）
 
     // 文本长度阈值
-    private let shortTextThreshold = 500      // 500字符以下为短文本
-    private let mediumTextThreshold = 1500    // 1500字符以下为中等文本
+    private let shortTextThreshold = 500       // 500字符以下为短文本
+    private let mediumTextThreshold = 3000     // 3000字符以下为中等文本
 
-    // 长文本暂停显示模式
-    private var isLongTextMode: Bool = false  // 是否进入长文本模式
-    private let veryLongTextThreshold = 3000  // 超过此值进入"仅显示进度"模式
+    // 超长文本保护模式（仅极端场景触发）
+    private var isLongTextMode: Bool = false
+    private let veryLongTextThreshold = 20000  // 超过此值进入"仅显示进度"模式
 
     var isStreaming: Bool { session.isStreaming }
 
