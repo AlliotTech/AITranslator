@@ -5,8 +5,8 @@
 </p>
 
 <p align="center">
-  <strong>A powerful macOS translation, polishing, and summarization tool powered by OpenAI-compatible APIs</strong><br>
-  <strong>基于 OpenAI 兼容 API 的强大 macOS 翻译、润色和摘要工具</strong>
+  <strong>A native macOS translator with OpenAI-compatible and DeepL-compatible providers</strong><br>
+  <strong>支持 OpenAI 兼容与 DeepL 兼容服务的原生 macOS 翻译工具</strong>
 </p>
 
 <p align="center">
@@ -27,7 +27,7 @@
 
 ### 📋 Overview
 
-AI Translator is a native macOS application that provides seamless translation, text polishing, and content summarization using OpenAI-compatible APIs. Built with SwiftUI, it offers a beautiful, accessible, and highly customizable interface with global hotkey support, multiple language detection engines, and proxy configuration.
+AI Translator is a native macOS application for translation, polishing, and summarization. It supports OpenAI-compatible APIs and DeepL-compatible services, with provider-aware capabilities, long-text chunking, global hotkeys, language detection, history, and proxy configuration.
 
 ### ✨ Features
 
@@ -35,7 +35,8 @@ AI Translator is a native macOS application that provides seamless translation, 
 - **🌐 Translation**: Automatically detect source language and translate to your target language
 - **✍️ Text Polishing**: Improve clarity, conciseness, and coherence in any language
 - **📝 Summarization**: Generate concise summaries of lengthy content
-- **🔄 Real-time Streaming**: See results as they're generated with SSE (Server-Sent Events)
+- **🔄 Provider-aware Output**: OpenAI-compatible services stream with SSE; DeepL Translate and Write return complete, non-streaming responses
+- **🧩 Long-text DeepL Requests**: Split oversized requests, show chunk progress, retain partial output, and retry from the failed chunk
 
 #### Language Support
 - **🔍 Multiple Detection Engines**: 
@@ -60,9 +61,9 @@ AI Translator is a native macOS application that provides seamless translation, 
 #### Advanced Features
 - **🔐 Proxy Support**: HTTP and SOCKS5 proxy with authentication
 - **⚙️ Customizable Shortcuts**: Configure send key (Enter or ⌘Enter)
- - **💾 Import/Export Settings & History**: Export/import preferences (JSON) and translation history (JSON)
- - **🕘 History Window**: Search, filter by mode, group by date, import/export, clear
- - **📊 Session State Management**: Maintains context across sessions
+- **💾 Import/Export Settings & History**: Export/import preferences (JSON) and translation history (JSON)
+- **🕘 History Window**: Search, filter by mode, group by date, import/export, clear
+- **📊 Session State Management**: Maintains context across sessions
 - **🚀 Optimized Performance**: Efficient resource usage with async/await
 
 ### 🛠 Requirements
@@ -70,7 +71,7 @@ AI Translator is a native macOS application that provides seamless translation, 
 - **macOS**: 13.0 (Ventura) or later
 - **Xcode**: 15.0 or later
 - **Swift**: 5.9 or later
-- **OpenAI-compatible API**: OpenAI, Azure OpenAI, or any compatible service
+- **One configured provider**: OpenAI-compatible, DeepL API Free/Pro, or a supported custom DeepL-compatible service
 
 ### 📦 Installation
 
@@ -101,10 +102,22 @@ Optional developer tooling via `just` and `asdf`:
 
 1. **Launch the application**
 2. **Open Settings** (⌘,)
-3. **Configure API settings**:
-   - Base URL: Your OpenAI-compatible endpoint
-   - Model: e.g., `gpt-4o-mini`, `gpt-5-chat`
-   - API Key: Your authentication key
+3. **Choose and configure a provider**:
+   - **OpenAI Compatible**: translation, polishing, summarization, and SSE streaming
+   - **DeepL API Free**: translation through `https://api-free.deepl.com`
+   - **DeepL API Pro**: translation plus polishing through DeepL Write
+   - **DLX / Custom Compatible**: choose official `/v2` or Legacy DeepLX `/translate`, then declare translation-only or translation-plus-Write capability
+4. Use **Test Connection** for a DeepL provider. It sends fixed sample text, not the text in the main window.
+
+#### DeepL Behavior and Limits
+
+- Official translation uses `POST /v2/translate`; polishing uses `POST /v2/write/rephrase`.
+- DeepL API Free does not provide DeepL Write, so polishing is disabled. DeepL-compatible providers do not provide summarization.
+- Official DeepL Translate and Write are non-streaming. Results appear after each request or long-text chunk completes.
+- Custom remote service URLs must use HTTPS. HTTP is accepted only for loopback hosts (`localhost`, `127.0.0.1`, and `::1`). A service root, `/v2`, complete `/v2/translate`, or complete Legacy `/translate` URL is accepted.
+- The app does not silently fall back to OpenAI when a DeepL request fails.
+- DLX/DeepLX is a compatibility proxy around private DeepL upstreams, not a locally hosted DeepL model. Text may still leave your machine; reliability, privacy, and terms risks depend on the deployment.
+- API keys keep the existing preferences/import/export behavior. Exported preference JSON includes configured credentials.
 
 #### Optional Settings
 
@@ -136,7 +149,7 @@ Optional developer tooling via `just` and `asdf`:
    - 📝 **Summarize**: Generate concise summaries
 3. **Choose languages** (for Translate and Summarize modes)
 4. **Press Send** (Enter or ⌘Enter based on your settings)
-5. **View results** streaming in real-time in the right pane
+5. **View results** in the right pane. OpenAI-compatible output can stream; DeepL output arrives per completed request or chunk.
 
 #### Keyboard Shortcuts
 
@@ -182,9 +195,11 @@ AITranslator/
 │           ├── ProxySettingsSection.swift
 │           └── HotkeysSettingsSection.swift
 ├── Services/                      # Core services
-│   ├── OpenAI/                   # OpenAI client
+│   ├── OpenAI/                   # OpenAI-compatible streaming client
 │   │   ├── OpenAIClient.swift
 │   │   └── SSEParser.swift
+│   ├── DeepL/                    # DeepL /v2 and Legacy DeepLX client
+│   │   └── DeepLClient.swift
 │   ├── Detection/                # Language detection
 │   │   ├── LanguageDetector.swift
 │   │   └── LanguageUtils.swift
@@ -248,8 +263,11 @@ swiftlint lint --path AITranslator/
 
 ### 🧪 Testing
 
-Currently no unit test targets are included. If you add tests, you can run them via:
-`xcodebuild test -project AITranslator.xcodeproj -scheme AITranslator`
+The `AITranslatorTests` target covers DeepL request/response contracts, language mapping, URL validation, chunking, retry behavior, compatibility decoding, provider routing, capability enforcement, and partial-output retry.
+
+```bash
+xcodebuild test -project AITranslator.xcodeproj -scheme AITranslator
+```
 
 ### 🤝 Contributing
 
@@ -285,7 +303,7 @@ For questions or support, please open an issue on GitHub.
 
 ### 📋 项目概述
 
-AI Translator 是一款原生 macOS 应用程序，使用 OpenAI 兼容 API 提供无缝的翻译、文本润色和内容摘要功能。采用 SwiftUI 构建，提供美观、可访问且高度可定制的界面，支持全局快捷键、多种语言检测引擎和代理配置。
+AI Translator 是一款原生 macOS 应用，支持 OpenAI 兼容 API 与 DeepL 兼容服务，可完成翻译、文本润色和内容摘要，并提供长文本分块、全局快捷键、语言检测、历史记录与代理配置。
 
 ### ✨ 功能特性
 
@@ -293,7 +311,8 @@ AI Translator 是一款原生 macOS 应用程序，使用 OpenAI 兼容 API 提�
 - **🌐 翻译**：自动检测源语言并翻译到目标语言
 - **✍️ 文本润色**：提升任何语言的文本清晰度、简洁性和连贯性
 - **📝 内容摘要**：为冗长内容生成简洁摘要
-- **🔄 实时流式传输**：通过 SSE（服务器发送事件）实时查看生成结果
+- **🔄 按服务输出**：OpenAI 兼容服务通过 SSE 流式输出；DeepL Translate 和 Write 返回完整的非流式响应
+- **🧩 DeepL 长文本处理**：自动按请求体限制分块，显示分块进度，失败时保留部分结果并从失败块重试
 
 #### 语言支持
 - **🔍 多种检测引擎**：
@@ -318,9 +337,9 @@ AI Translator 是一款原生 macOS 应用程序，使用 OpenAI 兼容 API 提�
 #### 高级特性
 - **🔐 代理支持**：支持 HTTP 和 SOCKS5 代理及身份验证
 - **⚙️ 可自定义快捷键**：配置发送键（回车或 ⌘回车）
- - **💾 导入/导出（设置与历史）**：导出/导入偏好设置（JSON）与翻译历史（JSON）
- - **🕘 历史记录窗口**：搜索、按模式筛选、按日期分组、导入/导出、清空
- - **📊 会话状态管理**：在会话间保持上下文
+- **💾 导入/导出（设置与历史）**：导出/导入偏好设置（JSON）与翻译历史（JSON）
+- **🕘 历史记录窗口**：搜索、按模式筛选、按日期分组、导入/导出、清空
+- **📊 会话状态管理**：在会话间保持上下文
 - **🚀 性能优化**：使用 async/await 的高效资源利用
 
 ### 🛠 系统要求
@@ -328,7 +347,7 @@ AI Translator 是一款原生 macOS 应用程序，使用 OpenAI 兼容 API 提�
 - **macOS**: 13.0 (Ventura) 或更高版本
 - **Xcode**: 15.0 或更高版本
 - **Swift**: 5.9 或更高版本
-- **OpenAI 兼容 API**: OpenAI、Azure OpenAI 或任何兼容服务
+- **至少配置一种服务**：OpenAI 兼容、DeepL API Free/Pro，或受支持的自定义 DeepL 兼容服务
 
 ### 📦 安装
 
@@ -359,10 +378,22 @@ AI Translator 是一款原生 macOS 应用程序，使用 OpenAI 兼容 API 提�
 
 1. **启动应用程序**
 2. **打开设置** (⌘,)
-3. **配置 API 设置**：
-   - 接口地址：您的 OpenAI 兼容端点
-   - 模型：例如 `gpt-4o-mini`、`gpt-5-chat`
-   - API 密钥：您的身份验证密钥
+3. **选择并配置服务**：
+   - **OpenAI 兼容**：支持翻译、润色、总结与 SSE 流式输出
+   - **DeepL API Free**：通过 `https://api-free.deepl.com` 翻译
+   - **DeepL API Pro**：支持翻译，并通过 DeepL Write 润色
+   - **DLX / 自定义兼容服务**：明确选择官方 `/v2` 或 Legacy DeepLX `/translate` 协议，并声明仅翻译或翻译 + Write
+4. DeepL 服务可使用“测试连接”。测试只发送固定样例文本，不会使用主窗口内容。
+
+#### DeepL 行为与限制
+
+- 官方翻译调用 `POST /v2/translate`；润色调用 `POST /v2/write/rephrase`。
+- DeepL API Free 不支持 DeepL Write，因此润色会禁用；DeepL 兼容服务均不支持总结。
+- 官方 DeepL Translate 和 Write 都是非流式接口。短文本在请求完成后展示，长文本按分块完成逐步展示。
+- 自定义远程服务必须使用 HTTPS；只有回环地址（`localhost`、`127.0.0.1`、`::1`）允许 HTTP。可以填写服务根地址、`/v2`、完整 `/v2/translate` 或完整 Legacy `/translate` 地址。
+- DeepL 请求失败时不会静默回退到 OpenAI。
+- DLX/DeepLX 是调用 DeepL 私有上游的兼容代理，不是本地部署的 DeepL 模型。文本仍可能离开本机，稳定性、隐私与服务条款风险取决于所选部署。
+- API 密钥继续沿用应用现有的偏好设置与导入导出行为；导出的设置 JSON 会包含已配置凭据。
 
 #### 可选设置
 
@@ -394,7 +425,7 @@ AI Translator 是一款原生 macOS 应用程序，使用 OpenAI 兼容 API 提�
    - 📝 **摘要**：生成简洁摘要
 3. **选择语言**（翻译和摘要模式）
 4. **按发送**（根据设置为回车或 ⌘回车）
-5. **在右侧面板实时查看结果流式传输**
+5. **查看结果**：OpenAI 兼容服务可流式显示；DeepL 按完整请求或分块完成后显示
 
 #### 键盘快捷键
 
@@ -440,9 +471,11 @@ AITranslator/
 │           ├── ProxySettingsSection.swift
 │           └── HotkeysSettingsSection.swift
 ├── Services/                      # 核心服务
-│   ├── OpenAI/                   # OpenAI 客户端
+│   ├── OpenAI/                   # OpenAI 兼容流式客户端
 │   │   ├── OpenAIClient.swift
 │   │   └── SSEParser.swift
+│   ├── DeepL/                    # DeepL /v2 与 Legacy DeepLX 客户端
+│   │   └── DeepLClient.swift
 │   ├── Detection/                # 语言检测
 │   │   ├── LanguageDetector.swift
 │   │   └── LanguageUtils.swift
@@ -506,8 +539,11 @@ swiftlint lint --path AITranslator/
 
 ### 🧪 测试
 
-当前工程未包含单元测试目标。如需添加测试，可使用：
-`xcodebuild test -project AITranslator.xcodeproj -scheme AITranslator`
+`AITranslatorTests` 测试目标覆盖 DeepL 请求与响应协议、语言映射、URL 校验、长文本分块、重试策略、旧数据兼容解码、服务路由、能力限制以及部分结果续传。
+
+```bash
+xcodebuild test -project AITranslator.xcodeproj -scheme AITranslator
+```
 
 ### 🤝 贡献
 

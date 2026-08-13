@@ -11,6 +11,21 @@ protocol OpenAIStreamingClient {
     ) -> AsyncThrowingStream<String, Error>
 }
 
+protocol DeepLServicing {
+    func prepareChunks(text: String, context: DeepLRequestContext) throws -> [DeepLTextChunk]
+
+    func execute(
+        text: String,
+        context: DeepLRequestContext,
+        proxy: HTTPClient.ProxySettings?
+    ) async throws -> String
+
+    func testConnection(
+        configuration: DeepLServiceConfiguration,
+        proxy: HTTPClient.ProxySettings?
+    ) async throws -> DeepLConnectionTestResult
+}
+
 protocol PreferencesPersisting {
     func load() -> Preferences?
     func save(_ preferences: Preferences)

@@ -36,8 +36,7 @@ struct TopBar: View {
 
                         viewModel.swapLanguages()
                         undoManager?.registerUndo(withTarget: viewModel) { vm in
-                            vm.session.sourceLang = prevSrc
-                            vm.session.targetLang = prevTgt
+                            vm.restoreLanguages(source: prevSrc, target: prevTgt)
                         }
 
                         // 动画结束后重置
@@ -81,31 +80,72 @@ struct TopBar: View {
 
             Spacer()
 
-            Picker(L10n.tr("picker.mode", lang: viewModel.preferences.appLanguage), selection: $viewModel.session.mode) {
-                ForEach(AppMode.allCases) { mode in
-                    switch mode {
-                    case .translate:
-                        Text(L10n.tr("mode.translate", lang: viewModel.preferences.appLanguage)).tag(mode)
-                    case .polish:
-                        Text(L10n.tr("mode.polish", lang: viewModel.preferences.appLanguage)).tag(mode)
-                    case .summarize:
-                        Text(L10n.tr("mode.summarize", lang: viewModel.preferences.appLanguage)).tag(mode)
-                    }
+            ModePicker(
+                selection: viewModel.session.mode,
+                isAvailable: viewModel.isModeAvailable,
+                appLanguage: viewModel.preferences.appLanguage,
+                onSelect: { mode in
+                    temporarilyBlurAndRefocus()
+                    viewModel.setMode(mode)
                 }
-            }
-            .pickerStyle(.segmented)
+            )
             .help(L10n.tr("picker.mode.help", lang: viewModel.preferences.appLanguage))
             .accessibilityLabel(L10n.tr("picker.mode", lang: viewModel.preferences.appLanguage))
             .accessibilityHint(L10n.tr("picker.mode.help", lang: viewModel.preferences.appLanguage))
-            .onChange(of: viewModel.session.mode) { oldMode, newMode in
-                temporarilyBlurAndRefocus()
-                viewModel.onModeChanged(from: oldMode, to: newMode)
-                if !viewModel.session.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    viewModel.send()
-                }
-            }
         }
         .padding(.horizontal, Metrics.outerPadding)
         .padding(.top, Metrics.outerPadding)
+    }
+}
+
+private struct ModePicker: View {
+    let selection: AppMode
+    let isAvailable: (AppMode) -> Bool
+    let appLanguage: AppLanguage
+    let onSelect: (AppMode) -> Void
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(AppMode.allCases) { mode in
+                let available = isAvailable(mode)
+                Button(action: { onSelect(mode) }) {
+                    Text(title(for: mode))
+                        .font(.caption)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 5)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(foregroundStyle(for: mode, available: available))
+                .background(selection == mode ? Color.accentColor : Color.clear)
+                .disabled(!available)
+                .accessibilityAddTraits(selection == mode ? .isSelected : [])
+            }
+        }
+        .frame(width: 240)
+        .background(Color(nsColor: .controlBackgroundColor))
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                .strokeBorder(AppColors.borderNormal, lineWidth: 0.5)
+        }
+    }
+
+    private func title(for mode: AppMode) -> String {
+        switch mode {
+        case .translate:
+            return L10n.tr("mode.translate", lang: appLanguage)
+        case .polish:
+            return L10n.tr("mode.polish", lang: appLanguage)
+        case .summarize:
+            return L10n.tr("mode.summarize", lang: appLanguage)
+        }
+    }
+
+    private func foregroundStyle(for mode: AppMode, available: Bool) -> Color {
+        if !available {
+            return .secondary.opacity(0.45)
+        }
+        return selection == mode ? .white : .primary
     }
 }

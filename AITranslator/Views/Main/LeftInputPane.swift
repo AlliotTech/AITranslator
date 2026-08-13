@@ -44,12 +44,11 @@ struct LeftInputPane: View {
 
                     let prevIn = viewModel.session.input
                     let prevOut = viewModel.session.output
-                    viewModel.session.input = ""
+                    viewModel.onInputChanged("")
                     viewModel.session.output = ""
                     viewModel.resetOverridesAfterClear()
                     undoManager?.registerUndo(withTarget: viewModel) { vm in
-                        vm.session.input = prevIn
-                        vm.session.output = prevOut
+                        vm.restoreAfterClear(input: prevIn, output: prevOut)
                     }
 
                     // 动画结束后重置

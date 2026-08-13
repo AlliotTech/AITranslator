@@ -6,6 +6,24 @@ struct BottomBar: View {
 
     var body: some View {
         HStack(spacing: 8) {
+            if viewModel.session.isStreaming,
+               viewModel.deepLTotalChunks > 1 {
+                Text(String(
+                    format: L10n.tr("progress.deepL.chunks", lang: viewModel.preferences.appLanguage),
+                    viewModel.deepLCompletedChunks,
+                    viewModel.deepLTotalChunks
+                ))
+                .font(.caption)
+                .foregroundColor(.secondary)
+            }
+
+            if !viewModel.session.isStreaming && viewModel.canRetryDeepLFromFailure {
+                Button(L10n.tr("btn.retry", lang: viewModel.preferences.appLanguage)) {
+                    viewModel.retryDeepLFromFailure()
+                }
+                .buttonCursor()
+            }
+
             Spacer()
 
             // 进度指示器：独立显示在按钮左侧

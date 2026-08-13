@@ -7,6 +7,8 @@ struct SettingsView: View {
     @State private var settingsWindowConfigured: Bool = false
 
     @State private var revealAPIKey: Bool = false
+    @State private var revealDeepLAPIKey: Bool = false
+    @State private var apiConnectionTestState: APIConnectionTestState = .idle
     @State private var proxyTestState: ProxyTestState = .idle
     @State private var saveCheckVisible: Bool = false
     @State private var resetConfirmPresented: Bool = false
@@ -19,9 +21,14 @@ struct SettingsView: View {
 
     private var hasChanges: Bool {
         let p = viewModel.preferences
-        return draft.baseURL != p.baseURL
+        return draft.translationProvider != p.translationProvider
+            || draft.baseURL != p.baseURL
             || draft.model != p.model
             || draft.apiKey != p.apiKey
+            || draft.deepLBaseURL != p.deepLBaseURL
+            || draft.deepLAPIKey != p.deepLAPIKey
+            || draft.deepLAPIFamily != p.deepLAPIFamily
+            || draft.deepLCustomCapability != p.deepLCustomCapability
             || draft.appLanguage != p.appLanguage
             || draft.detectionEngine != p.detectionEngine
             || draft.defaultTargetLanguage != p.defaultTargetLanguage
@@ -48,9 +55,15 @@ struct SettingsView: View {
                     .frame(minHeight: 180, alignment: .top)
                     .tabItem { Label(L10n.tr("settings.tab.general", lang: viewModel.preferences.appLanguage), systemImage: "gearshape") }
 
-                APISettingsSection(draft: draft, viewModel: viewModel, revealAPIKey: $revealAPIKey)
+                APISettingsSection(
+                    draft: draft,
+                    viewModel: viewModel,
+                    revealAPIKey: $revealAPIKey,
+                    revealDeepLAPIKey: $revealDeepLAPIKey,
+                    connectionTestState: $apiConnectionTestState
+                )
                     .controlSize(.small)
-                    .frame(minHeight: 280, alignment: .top)
+                    .frame(minHeight: 360, alignment: .top)
                     .tabItem { Label(L10n.tr("settings.tab.api", lang: viewModel.preferences.appLanguage), systemImage: "key") }
 
                 ProxySettingsSection(draft: draft, viewModel: viewModel, proxyTestState: $proxyTestState)
@@ -98,10 +111,15 @@ struct SettingsView: View {
                 Spacer()
                 Button(action: {
                     let newPrefs = Preferences(
+                        translationProvider: draft.translationProvider,
                         appLanguage: draft.appLanguage,
                         baseURL: draft.baseURL,
                         model: draft.model,
                         apiKey: draft.apiKey,
+                        deepLBaseURL: draft.deepLBaseURL,
+                        deepLAPIKey: draft.deepLAPIKey,
+                        deepLAPIFamily: draft.deepLAPIFamily,
+                        deepLCustomCapability: draft.deepLCustomCapability,
                         detectionEngine: draft.detectionEngine,
                         defaultTargetLanguage: draft.defaultTargetLanguage,
                         proxyType: draft.proxyType,

@@ -1,5 +1,10 @@
 import Foundation
 
+enum HistoryProvider: String, Codable, Equatable, Hashable {
+    case openAICompatible
+    case deepLCompatible
+}
+
 /// 历史记录数据模型
 /// 记录每次翻译/润色/总结操作的完整信息
 struct HistoryRecord: Identifiable, Codable, Equatable, Hashable {
@@ -24,8 +29,19 @@ struct HistoryRecord: Identifiable, Codable, Equatable, Hashable {
     /// 输出文本
     let output: String
 
-    /// 使用的AI模型
-    let model: String
+    /// 执行请求的服务类型
+    let provider: HistoryProvider
+
+    /// 具体模型或服务配置
+    let service: String
+
+    /// 兼容旧界面和旧导出文件中的 model 语义
+    var model: String { service }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, timestamp, mode, sourceLang, targetLang, input, output
+        case provider, service, model
+    }
 
     init(
         id: UUID = UUID(),
@@ -35,7 +51,8 @@ struct HistoryRecord: Identifiable, Codable, Equatable, Hashable {
         targetLang: String,
         input: String,
         output: String,
-        model: String
+        provider: HistoryProvider,
+        service: String
     ) {
         self.id = id
         self.timestamp = timestamp
@@ -44,7 +61,40 @@ struct HistoryRecord: Identifiable, Codable, Equatable, Hashable {
         self.targetLang = targetLang
         self.input = input
         self.output = output
-        self.model = model
+        self.provider = provider
+        self.service = service
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
+        timestamp = try container.decodeIfPresent(Date.self, forKey: .timestamp) ?? Date()
+        mode = try container.decode(AppMode.self, forKey: .mode)
+        sourceLang = try container.decode(String.self, forKey: .sourceLang)
+        targetLang = try container.decode(String.self, forKey: .targetLang)
+        input = try container.decode(String.self, forKey: .input)
+        output = try container.decode(String.self, forKey: .output)
+
+        if let decodedProvider = try container.decodeIfPresent(HistoryProvider.self, forKey: .provider) {
+            provider = decodedProvider
+            service = try container.decodeIfPresent(String.self, forKey: .service) ?? ""
+        } else {
+            provider = .openAICompatible
+            service = try container.decodeIfPresent(String.self, forKey: .model) ?? ""
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(timestamp, forKey: .timestamp)
+        try container.encode(mode, forKey: .mode)
+        try container.encode(sourceLang, forKey: .sourceLang)
+        try container.encode(targetLang, forKey: .targetLang)
+        try container.encode(input, forKey: .input)
+        try container.encode(output, forKey: .output)
+        try container.encode(provider, forKey: .provider)
+        try container.encode(service, forKey: .service)
     }
 
     // MARK: - Computed Properties

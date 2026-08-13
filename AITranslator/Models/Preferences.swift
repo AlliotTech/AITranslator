@@ -37,11 +37,43 @@ enum SendKey: String, CaseIterable, Codable, Identifiable {
     var id: String { rawValue }
 }
 
+enum TranslationProvider: String, CaseIterable, Codable, Identifiable {
+    case openAI
+    case deepLFree
+    case deepLPro
+    case deepLCustom
+
+    var id: String { rawValue }
+
+    var isDeepL: Bool { self != .openAI }
+}
+
+enum DeepLAPIFamily: String, CaseIterable, Codable, Identifiable {
+    case officialV2
+    case legacyDeepLX
+
+    var id: String { rawValue }
+}
+
+enum DeepLCustomCapability: String, CaseIterable, Codable, Identifiable {
+    case translateOnly
+    case translateAndWrite
+
+    var id: String { rawValue }
+}
+
 final class Preferences: ObservableObject, Codable {
+    @Published var translationProvider: TranslationProvider
     @Published var appLanguage: AppLanguage
     @Published var baseURL: String
     @Published var model: String
     @Published var apiKey: String
+
+    // DeepL-compatible API
+    @Published var deepLBaseURL: String
+    @Published var deepLAPIKey: String
+    @Published var deepLAPIFamily: DeepLAPIFamily
+    @Published var deepLCustomCapability: DeepLCustomCapability
 
     // Language detection
     @Published var detectionEngine: DetectionEngine
@@ -74,14 +106,23 @@ final class Preferences: ObservableObject, Codable {
     @Published var historyMaxRecords: Int
 
     enum CodingKeys: CodingKey {
-        case appLanguage, baseURL, model, apiKey, detectionEngine, defaultTargetLanguage, proxyType, proxyHost, proxyPort, proxyUsername, proxyPassword, noProxyTargets, alwaysOnTop, splitRatio, shortcutShowWindow, shortcutToggleMode, shortcutQuickCopy, sendKey, historyMaxRecords
+        case translationProvider, appLanguage, baseURL, model, apiKey
+        case deepLBaseURL, deepLAPIKey, deepLAPIFamily, deepLCustomCapability
+        case detectionEngine, defaultTargetLanguage, proxyType, proxyHost, proxyPort
+        case proxyUsername, proxyPassword, noProxyTargets, alwaysOnTop, splitRatio
+        case shortcutShowWindow, shortcutToggleMode, shortcutQuickCopy, sendKey, historyMaxRecords
     }
 
     init(
+        translationProvider: TranslationProvider = .openAI,
         appLanguage: AppLanguage = .system,
         baseURL: String = "https://api.openai.com/v1/chat/completions",
         model: String = "gpt-5-chat",
         apiKey: String = "",
+        deepLBaseURL: String = "",
+        deepLAPIKey: String = "",
+        deepLAPIFamily: DeepLAPIFamily = .officialV2,
+        deepLCustomCapability: DeepLCustomCapability = .translateOnly,
         detectionEngine: DetectionEngine = .local,
         defaultTargetLanguage: String = "en",
         proxyType: ProxyType = .none,
@@ -98,10 +139,15 @@ final class Preferences: ObservableObject, Codable {
         sendKey: SendKey = .cmdEnter,
         historyMaxRecords: Int = 200
     ) {
+        self.translationProvider = translationProvider
         self.appLanguage = appLanguage
         self.baseURL = baseURL
         self.model = model
         self.apiKey = apiKey
+        self.deepLBaseURL = deepLBaseURL
+        self.deepLAPIKey = deepLAPIKey
+        self.deepLAPIFamily = deepLAPIFamily
+        self.deepLCustomCapability = deepLCustomCapability
         self.detectionEngine = detectionEngine
         self.defaultTargetLanguage = LanguageUtils.coerceToSupported(code: defaultTargetLanguage)
         self.proxyType = proxyType
@@ -121,10 +167,15 @@ final class Preferences: ObservableObject, Codable {
 
     required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        translationProvider = try container.decodeIfPresent(TranslationProvider.self, forKey: .translationProvider) ?? .openAI
         appLanguage = try container.decodeIfPresent(AppLanguage.self, forKey: .appLanguage) ?? .system
-        baseURL = try container.decode(String.self, forKey: .baseURL)
-        model = try container.decode(String.self, forKey: .model)
-        apiKey = try container.decode(String.self, forKey: .apiKey)
+        baseURL = try container.decodeIfPresent(String.self, forKey: .baseURL) ?? "https://api.openai.com/v1/chat/completions"
+        model = try container.decodeIfPresent(String.self, forKey: .model) ?? "gpt-5-chat"
+        apiKey = try container.decodeIfPresent(String.self, forKey: .apiKey) ?? ""
+        deepLBaseURL = try container.decodeIfPresent(String.self, forKey: .deepLBaseURL) ?? ""
+        deepLAPIKey = try container.decodeIfPresent(String.self, forKey: .deepLAPIKey) ?? ""
+        deepLAPIFamily = try container.decodeIfPresent(DeepLAPIFamily.self, forKey: .deepLAPIFamily) ?? .officialV2
+        deepLCustomCapability = try container.decodeIfPresent(DeepLCustomCapability.self, forKey: .deepLCustomCapability) ?? .translateOnly
         detectionEngine = try container.decodeIfPresent(DetectionEngine.self, forKey: .detectionEngine) ?? .local
         let decodedTarget = try container.decodeIfPresent(String.self, forKey: .defaultTargetLanguage) ?? "en"
         defaultTargetLanguage = LanguageUtils.coerceToSupported(code: decodedTarget)
@@ -147,10 +198,15 @@ final class Preferences: ObservableObject, Codable {
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(translationProvider, forKey: .translationProvider)
         try container.encode(appLanguage, forKey: .appLanguage)
         try container.encode(baseURL, forKey: .baseURL)
         try container.encode(model, forKey: .model)
         try container.encode(apiKey, forKey: .apiKey)
+        try container.encode(deepLBaseURL, forKey: .deepLBaseURL)
+        try container.encode(deepLAPIKey, forKey: .deepLAPIKey)
+        try container.encode(deepLAPIFamily, forKey: .deepLAPIFamily)
+        try container.encode(deepLCustomCapability, forKey: .deepLCustomCapability)
         try container.encode(detectionEngine, forKey: .detectionEngine)
         try container.encode(defaultTargetLanguage, forKey: .defaultTargetLanguage)
         try container.encode(proxyType, forKey: .proxyType)
@@ -173,10 +229,15 @@ final class Preferences: ObservableObject, Codable {
     /// 从另一个 Preferences 对象复制所有设置
     /// - Parameter source: 源 Preferences 对象
     func load(from source: Preferences) {
+        self.translationProvider = source.translationProvider
         self.appLanguage = source.appLanguage
         self.baseURL = source.baseURL
         self.model = source.model
         self.apiKey = source.apiKey
+        self.deepLBaseURL = source.deepLBaseURL
+        self.deepLAPIKey = source.deepLAPIKey
+        self.deepLAPIFamily = source.deepLAPIFamily
+        self.deepLCustomCapability = source.deepLCustomCapability
         self.detectionEngine = source.detectionEngine
         self.defaultTargetLanguage = source.defaultTargetLanguage
         self.proxyType = source.proxyType
@@ -212,6 +273,65 @@ final class Preferences: ObservableObject, Codable {
         !apiKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
+    var resolvedDeepLBaseURL: String {
+        switch translationProvider {
+        case .deepLFree:
+            return "https://api-free.deepl.com"
+        case .deepLPro:
+            return "https://api.deepl.com"
+        case .deepLCustom:
+            return deepLBaseURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        case .openAI:
+            return ""
+        }
+    }
+
+    var resolvedDeepLAPIFamily: DeepLAPIFamily {
+        translationProvider == .deepLCustom ? deepLAPIFamily : .officialV2
+    }
+
+    var deepLSupportsWrite: Bool {
+        switch translationProvider {
+        case .deepLPro:
+            return true
+        case .deepLCustom:
+            return deepLAPIFamily == .officialV2 && deepLCustomCapability == .translateAndWrite
+        case .openAI, .deepLFree:
+            return false
+        }
+    }
+
+    var isDeepLAPIKeyValid: Bool {
+        switch translationProvider {
+        case .deepLFree, .deepLPro:
+            return !deepLAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .deepLCustom, .openAI:
+            return true
+        }
+    }
+
+    var isDeepLBaseURLValid: Bool {
+        guard translationProvider == .deepLCustom else { return true }
+        return Self.isAllowedDeepLBaseURL(deepLBaseURL)
+    }
+
+    static func isAllowedDeepLBaseURL(_ rawValue: String) -> Bool {
+        let text = rawValue.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty,
+              let components = URLComponents(string: text),
+              components.query == nil,
+              components.fragment == nil,
+              let scheme = components.scheme?.lowercased(),
+              let host = components.host?.lowercased(),
+              !host.isEmpty else {
+            return false
+        }
+
+        if scheme == "https" { return true }
+        guard scheme == "http" else { return false }
+        return host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "[::1]"
+    }
+
     /// 验证代理配置是否有效
     var isProxyValid: Bool {
         if proxyType == .none { return true }
@@ -234,6 +354,13 @@ final class Preferences: ObservableObject, Codable {
 
     /// 验证所有必填字段是否有效
     var isValid: Bool {
-        isBaseURLValid && isModelValid && isAPIKeyValid && isProxyValid
+        let providerValid: Bool
+        switch translationProvider {
+        case .openAI:
+            providerValid = isBaseURLValid && isModelValid && isAPIKeyValid
+        case .deepLFree, .deepLPro, .deepLCustom:
+            providerValid = isDeepLBaseURLValid && isDeepLAPIKeyValid
+        }
+        return providerValid && isProxyValid
     }
 }

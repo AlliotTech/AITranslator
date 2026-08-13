@@ -34,7 +34,8 @@ final class HistoryManager: ObservableObject {
         targetLang: String,
         input: String,
         output: String,
-        model: String
+        provider: HistoryProvider,
+        service: String
     ) {
         // maxRecords == 0 时不记录
         guard maxRecords != 0 else { return }
@@ -44,6 +45,8 @@ final class HistoryManager: ObservableObject {
            lastRecord.input == input,
            lastRecord.output == output,
            lastRecord.mode == mode,
+           lastRecord.provider == provider,
+           lastRecord.service == service,
            Date().timeIntervalSince(lastRecord.timestamp) < 60 {
             return
         }
@@ -55,7 +58,8 @@ final class HistoryManager: ObservableObject {
             targetLang: targetLang,
             input: input,
             output: output,
-            model: model
+            provider: provider,
+            service: service
         )
 
         // 插入到最前面（最新的记录）
@@ -105,7 +109,8 @@ final class HistoryManager: ObservableObject {
             record.input.lowercased().contains(lowercased) ||
             record.output.lowercased().contains(lowercased) ||
             record.mode.displayName.lowercased().contains(lowercased) ||
-            record.model.lowercased().contains(lowercased)
+            record.provider.rawValue.lowercased().contains(lowercased) ||
+            record.service.lowercased().contains(lowercased)
         }
     }
 
@@ -175,7 +180,8 @@ final class HistoryManager: ObservableObject {
                 record.input.lowercased().contains(lowercased) ||
                 record.output.lowercased().contains(lowercased) ||
                 record.mode.displayName.lowercased().contains(lowercased) ||
-                record.model.lowercased().contains(lowercased)
+                record.provider.rawValue.lowercased().contains(lowercased) ||
+                record.service.lowercased().contains(lowercased)
             }
         }
 

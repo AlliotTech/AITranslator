@@ -22,17 +22,24 @@ struct RightOutputPane: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 0) {
                         if let error = viewModel.session.error {
-                            Text(error)
-                                .frame(maxWidth: 720, alignment: .leading)
-                                .font(Typography.body)
-                                // 注意：不使用 .lineSpacing()，因为 .textSelection(.enabled)
-                                // 激活时会切换渲染方式，导致行距计算不一致
-                                .multilineTextAlignment(.leading)
-                                .foregroundColor(AppColors.error)
-                                .textSelection(.enabled)
-                                .autoTextAlignment(for: viewModel.session.targetLang)
-                                // 使用 id 强制刷新，修复窗口隐藏后显示时 textSelection 不渲染的问题
-                                .id("error-\(viewModel.outputRefreshToken)")
+                            VStack(alignment: .leading, spacing: 10) {
+                                if !viewModel.session.output.isEmpty {
+                                    OutputTextView(
+                                        output: viewModel.session.output,
+                                        isStreaming: false,
+                                        targetLang: viewModel.session.targetLang
+                                    )
+                                }
+
+                                Text(error)
+                                    .frame(maxWidth: 720, alignment: .leading)
+                                    .font(Typography.body)
+                                    .multilineTextAlignment(.leading)
+                                    .foregroundColor(AppColors.error)
+                                    .textSelection(.enabled)
+                                    .autoTextAlignment(for: viewModel.session.targetLang)
+                                    .id("error-\(viewModel.outputRefreshToken)")
+                            }
                         } else if viewModel.session.output.isEmpty {
                             if viewModel.session.isStreaming {
                                 HStack(spacing: 6) {

@@ -21,9 +21,9 @@ struct AITranslatorApp: App {
         Settings {
             SettingsView(viewModel: viewModel)
                 .environment(\.locale, locale ?? .autoupdatingCurrent)
-                .frame(width: 520, height: 400)
+                .frame(width: 620, height: 500)
         }
-        .defaultSize(width: 520, height: 400)
+        .defaultSize(width: 620, height: 500)
         .windowResizability(.contentSize)
 
         .commands {

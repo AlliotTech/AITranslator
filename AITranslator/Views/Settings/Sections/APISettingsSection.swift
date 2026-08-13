@@ -1,107 +1,291 @@
 import SwiftUI
 
+enum APIConnectionTestState: Equatable {
+    case idle
+    case testing
+    case success(String)
+    case failure(String)
+}
+
 struct APISettingsSection: View {
     @ObservedObject var draft: Preferences
     let viewModel: AppViewModel
     @Binding var revealAPIKey: Bool
+    @Binding var revealDeepLAPIKey: Bool
+    @Binding var connectionTestState: APIConnectionTestState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(L10n.tr("settings.api.title", lang: viewModel.preferences.appLanguage))
-                .headlineStyle()
-                .foregroundColor(.primary)
-            Grid(horizontalSpacing: 8, verticalSpacing: 6) {
-                GridRow {
-                    Text(L10n.tr("settings.api.baseURL", lang: viewModel.preferences.appLanguage))
-                    VStack(alignment: .leading, spacing: 2) {
-                        TextField(
-                            "",
-                            text: $draft.baseURL,
-                            prompt: Text(L10n.tr("settings.api.baseURL.placeholder", lang: viewModel.preferences.appLanguage))
-                        )
-                        .help(L10n.tr("settings.api.baseURL.help", lang: viewModel.preferences.appLanguage))
-                        .onChange(of: draft.baseURL) { _, newValue in
-                            draft.baseURL = newValue.trimmingCharacters(in: .whitespaces)
-                        }
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .stroke(Color.red.opacity(0.6), lineWidth: 1)
-                                .opacity(draft.isBaseURLValid ? 0 : 1)
-                        )
+        ScrollView {
+            VStack(alignment: .leading, spacing: 12) {
+                Text(L10n.tr("settings.api.title", lang: viewModel.preferences.appLanguage))
+                    .headlineStyle()
+                    .foregroundColor(.primary)
 
-                        if !draft.isBaseURLValid {
-                            Text(L10n.tr("settings.api.baseURL.invalid", lang: viewModel.preferences.appLanguage))
-                                .footnoteStyle()
-                                .foregroundColor(AppColors.error)
+                Grid(horizontalSpacing: 8, verticalSpacing: 8) {
+                    GridRow {
+                        fieldLabel("settings.api.provider")
+                        Picker("", selection: $draft.translationProvider) {
+                            providerOption(.openAI, key: "provider.openAI")
+                            providerOption(.deepLFree, key: "provider.deepLFree")
+                            providerOption(.deepLPro, key: "provider.deepLPro")
+                            providerOption(.deepLCustom, key: "provider.deepLCustom")
                         }
+                        .labelsHidden()
+                        .onChange(of: draft.translationProvider) { _, _ in
+                            connectionTestState = .idle
+                        }
+                    }
+
+                    if draft.translationProvider == .openAI {
+                        openAIFields
+                    } else {
+                        deepLFields
                     }
                 }
 
-                GridRow {
-                    Text(L10n.tr("settings.api.model", lang: viewModel.preferences.appLanguage))
-                    VStack(alignment: .leading, spacing: 2) {
-                        TextField(
-                            "",
-                            text: $draft.model,
-                            prompt: Text(L10n.tr("settings.api.model.placeholder", lang: viewModel.preferences.appLanguage))
-                        )
-                        .onChange(of: draft.model) { _, newValue in
-                            draft.model = newValue.trimmingCharacters(in: .whitespaces)
-                        }
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                .stroke(Color.red.opacity(0.6), lineWidth: 1)
-                                .opacity(draft.isModelValid ? 0 : 1)
-                        )
-
-                        if !draft.isModelValid {
-                            Text(L10n.tr("settings.api.model.invalid", lang: viewModel.preferences.appLanguage))
-                                .footnoteStyle()
-                                .foregroundColor(AppColors.error)
-                        }
-                    }
+                if draft.translationProvider == .deepLCustom {
+                    Label(
+                        L10n.tr("settings.api.deepL.custom.warning", lang: viewModel.preferences.appLanguage),
+                        systemImage: "exclamationmark.triangle"
+                    )
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 }
 
-                GridRow {
-                    Text(L10n.tr("settings.api.key", lang: viewModel.preferences.appLanguage))
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 8) {
-                            if revealAPIKey {
-                                TextField("", text: $draft.apiKey)
-                                    .onChange(of: draft.apiKey) { _, newValue in
-                                        draft.apiKey = newValue.trimmingCharacters(in: .whitespaces)
-                                    }
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                            .stroke(Color.red.opacity(0.6), lineWidth: 1)
-                                            .opacity(draft.isAPIKeyValid ? 0 : 1)
-                                    )
-                            } else {
-                                SecureField("", text: $draft.apiKey)
-                                    .onChange(of: draft.apiKey) { _, newValue in
-                                        draft.apiKey = newValue.trimmingCharacters(in: .whitespaces)
-                                    }
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                                            .stroke(Color.red.opacity(0.6), lineWidth: 1)
-                                            .opacity(draft.isAPIKeyValid ? 0 : 1)
-                                    )
-                            }
-                            Button(action: { revealAPIKey.toggle() }) {
-                                Image(systemName: revealAPIKey ? "eye.slash" : "eye")
-                            }
-                            .buttonCursor()
-                        }
+                Spacer(minLength: 0)
+            }
+        }
+    }
 
-                        if !draft.isAPIKeyValid {
-                            Text(L10n.tr("settings.api.key.invalid", lang: viewModel.preferences.appLanguage))
-                                .footnoteStyle()
-                                .foregroundColor(AppColors.error)
-                        }
+    @ViewBuilder
+    private var openAIFields: some View {
+        GridRow {
+            fieldLabel("settings.api.baseURL")
+            validatedField(
+                text: $draft.baseURL,
+                placeholder: "settings.api.baseURL.placeholder",
+                help: "settings.api.baseURL.help",
+                isValid: draft.isBaseURLValid,
+                invalidKey: "settings.api.baseURL.invalid"
+            )
+        }
+
+        GridRow {
+            fieldLabel("settings.api.model")
+            validatedField(
+                text: $draft.model,
+                placeholder: "settings.api.model.placeholder",
+                help: nil,
+                isValid: draft.isModelValid,
+                invalidKey: "settings.api.model.invalid"
+            )
+        }
+
+        GridRow {
+            fieldLabel("settings.api.key")
+            secureField(
+                text: $draft.apiKey,
+                isRevealed: $revealAPIKey,
+                isValid: draft.isAPIKeyValid,
+                invalidKey: "settings.api.key.invalid"
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var deepLFields: some View {
+        if draft.translationProvider == .deepLCustom {
+            GridRow {
+                fieldLabel("settings.api.deepL.protocol")
+                Picker("", selection: $draft.deepLAPIFamily) {
+                    Text(L10n.tr("settings.api.deepL.protocol.v2", lang: viewModel.preferences.appLanguage))
+                        .tag(DeepLAPIFamily.officialV2)
+                    Text(L10n.tr("settings.api.deepL.protocol.legacy", lang: viewModel.preferences.appLanguage))
+                        .tag(DeepLAPIFamily.legacyDeepLX)
+                }
+                .labelsHidden()
+                .onChange(of: draft.deepLAPIFamily) { _, family in
+                    if family == .legacyDeepLX {
+                        draft.deepLCustomCapability = .translateOnly
                     }
+                    connectionTestState = .idle
                 }
             }
-            Spacer(minLength: 0)
+
+            GridRow {
+                fieldLabel("settings.api.deepL.baseURL")
+                validatedField(
+                    text: $draft.deepLBaseURL,
+                    placeholder: "settings.api.deepL.baseURL.placeholder",
+                    help: "settings.api.deepL.baseURL.help",
+                    isValid: draft.isDeepLBaseURLValid,
+                    invalidKey: "settings.api.deepL.baseURL.invalid"
+                )
+            }
+
+            GridRow {
+                fieldLabel("settings.api.deepL.capability")
+                Picker("", selection: $draft.deepLCustomCapability) {
+                    Text(L10n.tr("settings.api.deepL.capability.translateOnly", lang: viewModel.preferences.appLanguage))
+                        .tag(DeepLCustomCapability.translateOnly)
+                    Text(L10n.tr("settings.api.deepL.capability.write", lang: viewModel.preferences.appLanguage))
+                        .tag(DeepLCustomCapability.translateAndWrite)
+                }
+                .labelsHidden()
+                .disabled(draft.deepLAPIFamily == .legacyDeepLX)
+                .onChange(of: draft.deepLCustomCapability) { _, _ in
+                    connectionTestState = .idle
+                }
+            }
+        } else {
+            GridRow {
+                fieldLabel("settings.api.deepL.baseURL")
+                Text(draft.resolvedDeepLBaseURL)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .textSelection(.enabled)
+            }
         }
+
+        GridRow {
+            fieldLabel("settings.api.deepL.key")
+            secureField(
+                text: $draft.deepLAPIKey,
+                isRevealed: $revealDeepLAPIKey,
+                isValid: draft.isDeepLAPIKeyValid,
+                invalidKey: "settings.api.deepL.key.invalid"
+            )
+        }
+
+        GridRow {
+            fieldLabel("settings.api.deepL.test")
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Button(L10n.tr("settings.api.deepL.test", lang: viewModel.preferences.appLanguage)) {
+                        connectionTestState = .testing
+                        let snapshot = Preferences(
+                            translationProvider: draft.translationProvider,
+                            deepLBaseURL: draft.deepLBaseURL,
+                            deepLAPIKey: draft.deepLAPIKey,
+                            deepLAPIFamily: draft.deepLAPIFamily,
+                            deepLCustomCapability: draft.deepLCustomCapability,
+                            proxyType: draft.proxyType,
+                            proxyHost: draft.proxyHost,
+                            proxyPort: draft.proxyPort,
+                            proxyUsername: draft.proxyUsername,
+                            proxyPassword: draft.proxyPassword,
+                            noProxyTargets: draft.noProxyTargets
+                        )
+                        Task {
+                            do {
+                                let result = try await viewModel.testDeepLConnection(preferences: snapshot)
+                                let key = result.rephrasedText == nil
+                                    ? "settings.api.deepL.test.success.translate"
+                                    : "settings.api.deepL.test.success.write"
+                                connectionTestState = .success(L10n.tr(key, lang: viewModel.preferences.appLanguage))
+                            } catch {
+                                connectionTestState = .failure(error.localizedDescription)
+                            }
+                        }
+                    }
+                    .buttonCursor()
+                    .disabled(!draft.isValid || connectionTestState == .testing)
+
+                    if connectionTestState == .testing {
+                        ProgressView().controlSize(.small)
+                    }
+                }
+
+                switch connectionTestState {
+                case .success(let message):
+                    Text(message).foregroundColor(AppColors.success).font(.caption)
+                case .failure(let message):
+                    Text(message).foregroundColor(AppColors.error).font(.caption).textSelection(.enabled)
+                case .idle, .testing:
+                    Text(L10n.tr("settings.api.deepL.test.help", lang: viewModel.preferences.appLanguage))
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                }
+            }
+        }
+    }
+
+    private func providerOption(_ provider: TranslationProvider, key: String) -> some View {
+        Text(L10n.tr(key, lang: viewModel.preferences.appLanguage)).tag(provider)
+    }
+
+    private func fieldLabel(_ key: String) -> some View {
+        Text(L10n.tr(key, lang: viewModel.preferences.appLanguage))
+            .frame(maxWidth: .infinity, alignment: .trailing)
+    }
+
+    private func validatedField(
+        text: Binding<String>,
+        placeholder: String,
+        help: String?,
+        isValid: Bool,
+        invalidKey: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            TextField(
+                "",
+                text: text,
+                prompt: Text(L10n.tr(placeholder, lang: viewModel.preferences.appLanguage))
+            )
+            .help(help.map { L10n.tr($0, lang: viewModel.preferences.appLanguage) } ?? "")
+            .onChange(of: text.wrappedValue) { _, newValue in
+                text.wrappedValue = newValue.trimmingCharacters(in: .whitespaces)
+                connectionTestState = .idle
+            }
+            .overlay(validationBorder(isValid: isValid))
+
+            if !isValid {
+                Text(L10n.tr(invalidKey, lang: viewModel.preferences.appLanguage))
+                    .footnoteStyle()
+                    .foregroundColor(AppColors.error)
+            }
+        }
+    }
+
+    private func secureField(
+        text: Binding<String>,
+        isRevealed: Binding<Bool>,
+        isValid: Bool,
+        invalidKey: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 8) {
+                Group {
+                    if isRevealed.wrappedValue {
+                        TextField("", text: text)
+                    } else {
+                        SecureField("", text: text)
+                    }
+                }
+                .onChange(of: text.wrappedValue) { _, newValue in
+                    text.wrappedValue = newValue.trimmingCharacters(in: .whitespaces)
+                    connectionTestState = .idle
+                }
+                .overlay(validationBorder(isValid: isValid))
+
+                Button(action: { isRevealed.wrappedValue.toggle() }) {
+                    Image(systemName: isRevealed.wrappedValue ? "eye.slash" : "eye")
+                }
+                .buttonCursor()
+            }
+
+            if !isValid {
+                Text(L10n.tr(invalidKey, lang: viewModel.preferences.appLanguage))
+                    .footnoteStyle()
+                    .foregroundColor(AppColors.error)
+            }
+        }
+    }
+
+    private func validationBorder(isValid: Bool) -> some View {
+        RoundedRectangle(cornerRadius: 6, style: .continuous)
+            .stroke(Color.red.opacity(0.6), lineWidth: 1)
+            .opacity(isValid ? 0 : 1)
     }
 }

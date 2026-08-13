@@ -21,7 +21,12 @@ enum L10n {
         "settings.general.historyMaxRecords.help": "设置历史记录最大数量（0=不记录，-1=无限）",
 
         // API section
-        "settings.api.title": "OpenAI 兼容",
+        "settings.api.title": "翻译服务",
+        "settings.api.provider": "服务",
+        "provider.openAI": "OpenAI 兼容",
+        "provider.deepLFree": "DeepL API Free",
+        "provider.deepLPro": "DeepL API Pro",
+        "provider.deepLCustom": "DLX / 自定义兼容服务",
         "settings.api.baseURL": "接口地址",
         "settings.api.baseURL.placeholder": "例如：https://api.openai.com/v1/chat/completions",
         "settings.api.baseURL.help": "兼容 OpenAI 的聊天补全接口地址",
@@ -31,6 +36,23 @@ enum L10n {
         "settings.api.model.invalid": "模型不能为空",
         "settings.api.key": "API 密钥",
         "settings.api.key.invalid": "API Key 不能为空",
+        "settings.api.deepL.baseURL": "服务根地址",
+        "settings.api.deepL.baseURL.placeholder": "例如：https://example.com 或 http://localhost:1188",
+        "settings.api.deepL.baseURL.help": "可填写服务根地址或完整接口地址，应用会自动规范化路径",
+        "settings.api.deepL.baseURL.invalid": "请输入 HTTPS 地址；仅 localhost/127.0.0.1/::1 可使用 HTTP",
+        "settings.api.deepL.key": "访问密钥",
+        "settings.api.deepL.key.invalid": "官方 DeepL API 需要访问密钥",
+        "settings.api.deepL.protocol": "协议",
+        "settings.api.deepL.protocol.v2": "DeepL /v2",
+        "settings.api.deepL.protocol.legacy": "Legacy DeepLX /translate",
+        "settings.api.deepL.capability": "能力",
+        "settings.api.deepL.capability.translateOnly": "仅翻译",
+        "settings.api.deepL.capability.write": "翻译 + DeepL Write",
+        "settings.api.deepL.test": "测试连接",
+        "settings.api.deepL.test.help": "会发送固定测试文本，不会使用主窗口内容。",
+        "settings.api.deepL.test.success.translate": "翻译接口测试成功",
+        "settings.api.deepL.test.success.write": "翻译与 Write 接口测试成功",
+        "settings.api.deepL.custom.warning": "DLX/DeepLX 是兼容代理而非本地 DeepL 模型；文本仍可能发送到 DeepL 私有上游，稳定性、隐私与条款风险由所选服务决定。",
 
         // Proxy section
         "settings.proxy.title": "网络代理",
@@ -135,12 +157,17 @@ enum L10n {
         "failed": "生成失败",
         "btn.stop": "停止",
         "btn.send": "发送",
+        "btn.retry": "从失败处重试",
         "btn.stop.help": "停止生成（Esc）",
         "btn.stop.a11y": "停止生成",
         "btn.stop.hint": "中断当前请求",
         "btn.send.help": "发送请求（⌘⏎）",
         "btn.send.a11y": "发送请求",
         "btn.send.hint": "开始翻译、润色或总结",
+        "progress.deepL.chunks": "分块进度 %d/%d",
+        "error.deepL.chunkFailure": "第 %d/%d 块失败：%@",
+        "error.deepL.writeUnavailable": "当前 DeepL 服务不支持润色。需要 DeepL API Pro 或声明支持 Write 的 /v2 服务。",
+        "error.deepL.summarizeUnavailable": "DeepL 服务不支持总结。",
 
         // Toasts
         "toast.pinned": "已置顶窗口",
@@ -149,6 +176,7 @@ enum L10n {
         "toast.export.failure.prefix": "导出失败：",
         "toast.import.failure.prefix": "导入失败：",
         "toast.copied": "已复制到剪贴板",
+        "toast.mode.switchedToTranslate": "当前服务不支持所选模式，已切换到翻译。",
 
         // History Window
         "toolbar.history": "历史记录",
@@ -191,6 +219,8 @@ enum L10n {
         "history.date.yesterday": "昨天",
         "history.date.thisWeek": "本周",
         "history.date.thisMonth": "本月",
+        "history.provider.openAI": "OpenAI 兼容",
+        "history.provider.deepL": "DeepL 兼容",
 
         // History Settings (simplified)
         "settings.history.disabled": "不记录",
@@ -217,7 +247,12 @@ enum L10n {
         "settings.general.historyMaxRecords.help": "Set maximum history records (0=disabled, -1=unlimited)",
 
         // API section
-        "settings.api.title": "OpenAI Compatible",
+        "settings.api.title": "Translation Service",
+        "settings.api.provider": "Service",
+        "provider.openAI": "OpenAI Compatible",
+        "provider.deepLFree": "DeepL API Free",
+        "provider.deepLPro": "DeepL API Pro",
+        "provider.deepLCustom": "DLX / Custom Compatible",
         "settings.api.baseURL": "Base URL",
         "settings.api.baseURL.placeholder": "e.g. https://api.openai.com/v1/chat/completions",
         "settings.api.baseURL.help": "OpenAI-compatible chat completions endpoint",
@@ -227,6 +262,23 @@ enum L10n {
         "settings.api.model.invalid": "Model cannot be empty",
         "settings.api.key": "API Key",
         "settings.api.key.invalid": "API Key is required",
+        "settings.api.deepL.baseURL": "Service Base URL",
+        "settings.api.deepL.baseURL.placeholder": "e.g. https://example.com or http://localhost:1188",
+        "settings.api.deepL.baseURL.help": "Enter a service root or complete endpoint; the app normalizes the API path",
+        "settings.api.deepL.baseURL.invalid": "Use HTTPS; HTTP is allowed only for localhost, 127.0.0.1, or ::1",
+        "settings.api.deepL.key": "Access Key",
+        "settings.api.deepL.key.invalid": "Official DeepL API requires an access key",
+        "settings.api.deepL.protocol": "Protocol",
+        "settings.api.deepL.protocol.v2": "DeepL /v2",
+        "settings.api.deepL.protocol.legacy": "Legacy DeepLX /translate",
+        "settings.api.deepL.capability": "Capabilities",
+        "settings.api.deepL.capability.translateOnly": "Translate only",
+        "settings.api.deepL.capability.write": "Translate + DeepL Write",
+        "settings.api.deepL.test": "Test Connection",
+        "settings.api.deepL.test.help": "Sends fixed test text; it does not use the main-window input.",
+        "settings.api.deepL.test.success.translate": "Translation endpoint test succeeded",
+        "settings.api.deepL.test.success.write": "Translation and Write endpoint tests succeeded",
+        "settings.api.deepL.custom.warning": "DLX/DeepLX is a compatibility proxy, not a local DeepL model. Text may still be sent to private DeepL upstreams; stability, privacy, and terms risks depend on the selected service.",
 
         // Proxy section
         "settings.proxy.title": "Network Proxy",
@@ -331,12 +383,17 @@ enum L10n {
         "failed": "Failed",
         "btn.stop": "Stop",
         "btn.send": "Send",
+        "btn.retry": "Retry from Failure",
         "btn.stop.help": "Stop generation (Esc)",
         "btn.stop.a11y": "Stop generation",
         "btn.stop.hint": "Interrupt current request",
         "btn.send.help": "Send request (⌘⏎)",
         "btn.send.a11y": "Send request",
         "btn.send.hint": "Start translate, polish, or summarize",
+        "progress.deepL.chunks": "Chunk progress %d/%d",
+        "error.deepL.chunkFailure": "Chunk %d/%d failed: %@",
+        "error.deepL.writeUnavailable": "This DeepL service does not support polishing. Use DeepL API Pro or a /v2 service declared to support Write.",
+        "error.deepL.summarizeUnavailable": "DeepL services do not support summarization.",
 
         // Toasts
         "toast.pinned": "Window pinned",
@@ -345,6 +402,7 @@ enum L10n {
         "toast.export.failure.prefix": "Export failed: ",
         "toast.import.failure.prefix": "Import failed: ",
         "toast.copied": "Copied to clipboard",
+        "toast.mode.switchedToTranslate": "The selected mode is unavailable for this service. Switched to Translate.",
 
         // History Window
         "toolbar.history": "History",
@@ -387,6 +445,8 @@ enum L10n {
         "history.date.yesterday": "Yesterday",
         "history.date.thisWeek": "This Week",
         "history.date.thisMonth": "This Month",
+        "history.provider.openAI": "OpenAI Compatible",
+        "history.provider.deepL": "DeepL Compatible",
 
         // History Settings (simplified)
         "settings.history.disabled": "Disabled",

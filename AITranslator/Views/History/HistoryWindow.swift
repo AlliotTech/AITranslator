@@ -230,7 +230,7 @@ struct HistoryWindow: View {
                     Text("•")
                         .foregroundColor(.secondary)
 
-                    Text(record.model)
+                    Text("\(historyProviderName(record.provider)) · \(record.service)")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
 
@@ -457,6 +457,15 @@ struct HistoryWindow: View {
 
     private func languageName(_ code: String) -> String {
         LanguageUtils.displayName(for: code)
+    }
+
+    private func historyProviderName(_ provider: HistoryProvider) -> String {
+        switch provider {
+        case .openAICompatible:
+            return L10n.tr("history.provider.openAI", lang: preferences.appLanguage)
+        case .deepLCompatible:
+            return L10n.tr("history.provider.deepL", lang: preferences.appLanguage)
+        }
     }
 
     private func copyToClipboard(_ text: String) {
