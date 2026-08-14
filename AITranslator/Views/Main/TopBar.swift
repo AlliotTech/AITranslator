@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct TopBar: View {
@@ -80,10 +81,10 @@ struct TopBar: View {
 
             Spacer()
 
-            ModePicker(
+            NativeModePicker(
                 selection: viewModel.session.mode,
-                isAvailable: viewModel.isModeAvailable,
-                appLanguage: viewModel.preferences.appLanguage,
+                titles: AppMode.allCases.map(modeTitle),
+                enabledSegments: AppMode.allCases.map(viewModel.isModeAvailable),
                 onSelect: { mode in
                     temporarilyBlurAndRefocus()
                     viewModel.setMode(mode)
@@ -96,56 +97,70 @@ struct TopBar: View {
         .padding(.horizontal, Metrics.outerPadding)
         .padding(.top, Metrics.outerPadding)
     }
-}
 
-private struct ModePicker: View {
-    let selection: AppMode
-    let isAvailable: (AppMode) -> Bool
-    let appLanguage: AppLanguage
-    let onSelect: (AppMode) -> Void
-
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(AppMode.allCases) { mode in
-                let available = isAvailable(mode)
-                Button(action: { onSelect(mode) }) {
-                    Text(title(for: mode))
-                        .font(.caption)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 5)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(foregroundStyle(for: mode, available: available))
-                .background(selection == mode ? Color.accentColor : Color.clear)
-                .disabled(!available)
-                .accessibilityAddTraits(selection == mode ? .isSelected : [])
-            }
-        }
-        .frame(width: 240)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 6, style: .continuous)
-                .strokeBorder(AppColors.borderNormal, lineWidth: 0.5)
-        }
-    }
-
-    private func title(for mode: AppMode) -> String {
+    private func modeTitle(for mode: AppMode) -> String {
         switch mode {
         case .translate:
-            return L10n.tr("mode.translate", lang: appLanguage)
+            return L10n.tr("mode.translate", lang: viewModel.preferences.appLanguage)
         case .polish:
-            return L10n.tr("mode.polish", lang: appLanguage)
+            return L10n.tr("mode.polish", lang: viewModel.preferences.appLanguage)
         case .summarize:
-            return L10n.tr("mode.summarize", lang: appLanguage)
+            return L10n.tr("mode.summarize", lang: viewModel.preferences.appLanguage)
         }
     }
+}
 
-    private func foregroundStyle(for mode: AppMode, available: Bool) -> Color {
-        if !available {
-            return .secondary.opacity(0.45)
+private struct NativeModePicker: NSViewRepresentable {
+    let selection: AppMode
+    let titles: [String]
+    let enabledSegments: [Bool]
+    let onSelect: (AppMode) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onSelect: onSelect)
+    }
+
+    func makeNSView(context: Context) -> NSSegmentedControl {
+        let control = NSSegmentedControl(
+            labels: titles,
+            trackingMode: .selectOne,
+            target: context.coordinator,
+            action: #selector(Coordinator.selectionChanged(_:))
+        )
+        control.segmentDistribution = .fillEqually
+        control.setContentHuggingPriority(.required, for: .horizontal)
+        control.setContentCompressionResistancePriority(.required, for: .horizontal)
+        update(control, coordinator: context.coordinator)
+        return control
+    }
+
+    func updateNSView(_ control: NSSegmentedControl, context: Context) {
+        update(control, coordinator: context.coordinator)
+    }
+
+    private func update(_ control: NSSegmentedControl, coordinator: Coordinator) {
+        coordinator.onSelect = onSelect
+
+        for index in titles.indices where index < control.segmentCount {
+            control.setLabel(titles[index], forSegment: index)
+            control.setEnabled(enabledSegments.indices.contains(index) && enabledSegments[index], forSegment: index)
         }
-        return selection == mode ? .white : .primary
+
+        control.selectedSegment = AppMode.allCases.firstIndex(of: selection) ?? 0
+        control.sizeToFit()
+    }
+
+    final class Coordinator: NSObject {
+        var onSelect: (AppMode) -> Void
+
+        init(onSelect: @escaping (AppMode) -> Void) {
+            self.onSelect = onSelect
+        }
+
+        @objc func selectionChanged(_ sender: NSSegmentedControl) {
+            let index = sender.selectedSegment
+            guard AppMode.allCases.indices.contains(index) else { return }
+            onSelect(AppMode.allCases[index])
+        }
     }
 }
