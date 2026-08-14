@@ -5,23 +5,22 @@ struct GeneralSettingsSection: View {
     let viewModel: AppViewModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(L10n.tr("settings.general.title", lang: viewModel.preferences.appLanguage))
-                .headlineStyle()
-                .foregroundColor(.primary)
-            Grid(horizontalSpacing: 8, verticalSpacing: 6) {
+        SettingsPage(L10n.tr("settings.general.title", lang: viewModel.preferences.appLanguage)) {
+            SettingsFormGrid {
                 GridRow {
-                    Text(L10n.tr("settings.general.appLanguage", lang: viewModel.preferences.appLanguage))
+                    fieldLabel("settings.general.appLanguage")
                     Picker("", selection: $draft.appLanguage) {
                         ForEach(AppLanguage.allCases) { option in
                             Text(L10n.languageDisplayName(option, uiLang: viewModel.preferences.appLanguage)).tag(option)
                         }
                     }
                     .labelsHidden()
+                    .settingsFieldControl()
                     .help(L10n.tr("settings.general.appLanguage.help", lang: viewModel.preferences.appLanguage))
                 }
+
                 GridRow {
-                    Text(L10n.tr("settings.general.detectionEngine", lang: viewModel.preferences.appLanguage))
+                    fieldLabel("settings.general.detectionEngine")
                     Picker("", selection: $draft.detectionEngine) {
                         ForEach(DetectionEngine.allCases) { e in
                             switch e {
@@ -37,20 +36,24 @@ struct GeneralSettingsSection: View {
                         }
                     }
                     .labelsHidden()
+                    .settingsFieldControl()
                     .help(L10n.tr("settings.general.detectionEngine.help", lang: viewModel.preferences.appLanguage))
                 }
+
                 GridRow {
-                    Text(L10n.tr("settings.general.defaultTargetLanguage", lang: viewModel.preferences.appLanguage))
+                    fieldLabel("settings.general.defaultTargetLanguage")
                     Picker("", selection: $draft.defaultTargetLanguage) {
                         ForEach(LanguageUtils.supported) { lang in
                             Text(lang.name).tag(lang.id)
                         }
                     }
                     .labelsHidden()
+                    .settingsFieldControl()
                     .help(L10n.tr("settings.general.defaultTargetLanguage.help", lang: viewModel.preferences.appLanguage))
                 }
+
                 GridRow {
-                    Text(L10n.tr("settings.general.historyMaxRecords", lang: viewModel.preferences.appLanguage))
+                    fieldLabel("settings.general.historyMaxRecords")
                     Picker("", selection: $draft.historyMaxRecords) {
                         Text(L10n.tr("settings.history.disabled", lang: viewModel.preferences.appLanguage))
                             .tag(0)
@@ -63,10 +66,15 @@ struct GeneralSettingsSection: View {
                             .tag(-1)
                     }
                     .labelsHidden()
+                    .settingsFieldControl()
                     .help(L10n.tr("settings.general.historyMaxRecords.help", lang: viewModel.preferences.appLanguage))
                 }
             }
-            Spacer(minLength: 0)
         }
+    }
+
+    private func fieldLabel(_ key: String) -> some View {
+        Text(L10n.tr(key, lang: viewModel.preferences.appLanguage))
+            .settingsFieldLabel()
     }
 }

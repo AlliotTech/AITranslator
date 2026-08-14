@@ -15,45 +15,39 @@ struct APISettingsSection: View {
     @Binding var connectionTestState: APIConnectionTestState
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                Text(L10n.tr("settings.api.title", lang: viewModel.preferences.appLanguage))
-                    .headlineStyle()
-                    .foregroundColor(.primary)
-
-                Grid(horizontalSpacing: 8, verticalSpacing: 8) {
-                    GridRow {
-                        fieldLabel("settings.api.provider")
-                        Picker("", selection: $draft.translationProvider) {
-                            providerOption(.openAI, key: "provider.openAI")
-                            providerOption(.deepLFree, key: "provider.deepLFree")
-                            providerOption(.deepLPro, key: "provider.deepLPro")
-                            providerOption(.deepLCustom, key: "provider.deepLCustom")
-                        }
-                        .labelsHidden()
-                        .onChange(of: draft.translationProvider) { _, _ in
-                            connectionTestState = .idle
-                        }
+        SettingsPage(L10n.tr("settings.api.title", lang: viewModel.preferences.appLanguage)) {
+            SettingsFormGrid {
+                GridRow {
+                    fieldLabel("settings.api.provider")
+                    Picker("", selection: $draft.translationProvider) {
+                        providerOption(.openAI, key: "provider.openAI")
+                        providerOption(.deepLFree, key: "provider.deepLFree")
+                        providerOption(.deepLPro, key: "provider.deepLPro")
+                        providerOption(.deepLCustom, key: "provider.deepLCustom")
                     }
-
-                    if draft.translationProvider == .openAI {
-                        openAIFields
-                    } else {
-                        deepLFields
+                    .labelsHidden()
+                    .settingsFieldControl()
+                    .onChange(of: draft.translationProvider) { _, _ in
+                        connectionTestState = .idle
                     }
                 }
 
-                if draft.translationProvider == .deepLCustom {
-                    Label(
-                        L10n.tr("settings.api.deepL.custom.warning", lang: viewModel.preferences.appLanguage),
-                        systemImage: "exclamationmark.triangle"
-                    )
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+                if draft.translationProvider == .openAI {
+                    openAIFields
+                } else {
+                    deepLFields
                 }
+            }
 
-                Spacer(minLength: 0)
+            if draft.translationProvider == .deepLCustom {
+                Label(
+                    L10n.tr("settings.api.deepL.custom.warning", lang: viewModel.preferences.appLanguage),
+                    systemImage: "exclamationmark.triangle"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.leading, SettingsLayout.labelWidth + SettingsLayout.columnSpacing)
             }
         }
     }
@@ -69,6 +63,7 @@ struct APISettingsSection: View {
                 isValid: draft.isBaseURLValid,
                 invalidKey: "settings.api.baseURL.invalid"
             )
+            .settingsFieldControl()
         }
 
         GridRow {
@@ -80,6 +75,7 @@ struct APISettingsSection: View {
                 isValid: draft.isModelValid,
                 invalidKey: "settings.api.model.invalid"
             )
+            .settingsFieldControl()
         }
 
         GridRow {
@@ -90,6 +86,7 @@ struct APISettingsSection: View {
                 isValid: draft.isAPIKeyValid,
                 invalidKey: "settings.api.key.invalid"
             )
+            .settingsFieldControl()
         }
     }
 
@@ -105,6 +102,7 @@ struct APISettingsSection: View {
                         .tag(DeepLAPIFamily.legacyDeepLX)
                 }
                 .labelsHidden()
+                .settingsFieldControl()
                 .onChange(of: draft.deepLAPIFamily) { _, family in
                     if family == .legacyDeepLX {
                         draft.deepLCustomCapability = .translateOnly
@@ -122,6 +120,7 @@ struct APISettingsSection: View {
                     isValid: draft.isDeepLBaseURLValid,
                     invalidKey: "settings.api.deepL.baseURL.invalid"
                 )
+                .settingsFieldControl()
             }
 
             GridRow {
@@ -133,6 +132,7 @@ struct APISettingsSection: View {
                         .tag(DeepLCustomCapability.translateAndWrite)
                 }
                 .labelsHidden()
+                .settingsFieldControl()
                 .disabled(draft.deepLAPIFamily == .legacyDeepLX)
                 .onChange(of: draft.deepLCustomCapability) { _, _ in
                     connectionTestState = .idle
@@ -141,10 +141,8 @@ struct APISettingsSection: View {
         } else {
             GridRow {
                 fieldLabel("settings.api.deepL.baseURL")
-                Text(draft.resolvedDeepLBaseURL)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .textSelection(.enabled)
+                readOnlyField(draft.resolvedDeepLBaseURL)
+                    .settingsFieldControl()
             }
         }
 
@@ -156,6 +154,7 @@ struct APISettingsSection: View {
                 isValid: draft.isDeepLAPIKeyValid,
                 invalidKey: "settings.api.deepL.key.invalid"
             )
+            .settingsFieldControl()
         }
 
         GridRow {
@@ -199,15 +198,17 @@ struct APISettingsSection: View {
 
                 switch connectionTestState {
                 case .success(let message):
-                    Text(message).foregroundColor(AppColors.success).font(.caption)
+                    Text(message).foregroundStyle(AppColors.success).font(.caption)
                 case .failure(let message):
-                    Text(message).foregroundColor(AppColors.error).font(.caption).textSelection(.enabled)
+                    Text(message).foregroundStyle(AppColors.error).font(.caption).textSelection(.enabled)
                 case .idle, .testing:
                     Text(L10n.tr("settings.api.deepL.test.help", lang: viewModel.preferences.appLanguage))
-                        .foregroundColor(.secondary)
+                        .foregroundStyle(.secondary)
                         .font(.caption)
                 }
             }
+            .fixedSize(horizontal: false, vertical: true)
+            .settingsFieldControl()
         }
     }
 
@@ -217,7 +218,27 @@ struct APISettingsSection: View {
 
     private func fieldLabel(_ key: String) -> some View {
         Text(L10n.tr(key, lang: viewModel.preferences.appLanguage))
-            .frame(maxWidth: .infinity, alignment: .trailing)
+            .settingsFieldLabel()
+    }
+
+    private func readOnlyField(_ value: String) -> some View {
+        Text(value)
+            .font(.callout.monospaced())
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .truncationMode(.middle)
+            .textSelection(.enabled)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .fill(AppColors.contentBackground.opacity(0.7))
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .strokeBorder(AppColors.borderNormal, lineWidth: 1)
+            }
     }
 
     private func validatedField(
@@ -243,7 +264,7 @@ struct APISettingsSection: View {
             if !isValid {
                 Text(L10n.tr(invalidKey, lang: viewModel.preferences.appLanguage))
                     .footnoteStyle()
-                    .foregroundColor(AppColors.error)
+                    .foregroundStyle(AppColors.error)
             }
         }
     }
@@ -278,7 +299,7 @@ struct APISettingsSection: View {
             if !isValid {
                 Text(L10n.tr(invalidKey, lang: viewModel.preferences.appLanguage))
                     .footnoteStyle()
-                    .foregroundColor(AppColors.error)
+                    .foregroundStyle(AppColors.error)
             }
         }
     }

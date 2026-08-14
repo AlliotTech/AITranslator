@@ -1,10 +1,73 @@
 import SwiftUI
 
+enum SettingsLayout {
+    static let contentWidth: CGFloat = 536
+    static let labelWidth: CGFloat = 128
+    static let pageHorizontalPadding: CGFloat = 24
+    static let pageVerticalPadding: CGFloat = 20
+    static let sectionSpacing: CGFloat = 18
+    static let columnSpacing: CGFloat = 16
+    static let rowSpacing: CGFloat = 12
+}
+
+struct SettingsPage<Content: View>: View {
+    let title: String
+    private let content: Content
+
+    init(_ title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: SettingsLayout.sectionSpacing) {
+                Text(title)
+                    .headlineStyle()
+                    .foregroundStyle(.primary)
+
+                content
+            }
+            .frame(maxWidth: SettingsLayout.contentWidth, alignment: .leading)
+            .padding(.horizontal, SettingsLayout.pageHorizontalPadding)
+            .padding(.vertical, SettingsLayout.pageVerticalPadding)
+            .frame(maxWidth: .infinity, alignment: .top)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+struct SettingsFormGrid<Content: View>: View {
+    private let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        Grid(horizontalSpacing: SettingsLayout.columnSpacing, verticalSpacing: SettingsLayout.rowSpacing) {
+            content
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+extension View {
+    func settingsFieldLabel() -> some View {
+        foregroundStyle(.secondary)
+            .frame(width: SettingsLayout.labelWidth, alignment: .trailing)
+            .padding(.top, 3)
+    }
+
+    func settingsFieldControl() -> some View {
+        frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 struct SettingsView: View {
     @ObservedObject var viewModel: AppViewModel
 
     @StateObject private var draft = Preferences()
-    @State private var settingsWindowConfigured: Bool = false
 
     @State private var revealAPIKey: Bool = false
     @State private var revealDeepLAPIKey: Bool = false
@@ -48,11 +111,9 @@ struct SettingsView: View {
     private var canSave: Bool { draft.isValid && hasChanges }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(spacing: 0) {
             TabView {
                 GeneralSettingsSection(draft: draft, viewModel: viewModel)
-                    .controlSize(.small)
-                    .frame(minHeight: 180, alignment: .top)
                     .tabItem { Label(L10n.tr("settings.tab.general", lang: viewModel.preferences.appLanguage), systemImage: "gearshape") }
 
                 APISettingsSection(
@@ -62,13 +123,9 @@ struct SettingsView: View {
                     revealDeepLAPIKey: $revealDeepLAPIKey,
                     connectionTestState: $apiConnectionTestState
                 )
-                    .controlSize(.small)
-                    .frame(minHeight: 360, alignment: .top)
                     .tabItem { Label(L10n.tr("settings.tab.api", lang: viewModel.preferences.appLanguage), systemImage: "key") }
 
                 ProxySettingsSection(draft: draft, viewModel: viewModel, proxyTestState: $proxyTestState)
-                    .controlSize(.small)
-                    .frame(minHeight: 280, alignment: .top)
                     .tabItem { Label(L10n.tr("settings.tab.proxy", lang: viewModel.preferences.appLanguage), systemImage: "globe") }
 
                 HotkeysSettingsSection(
@@ -79,90 +136,13 @@ struct SettingsView: View {
                     toggleModeHelpPresented: $toggleModeHelpPresented,
                     quickCopyHelpPresented: $quickCopyHelpPresented
                 )
-                .controlSize(.small)
-                .frame(minHeight: 220, alignment: .top)
                 .tabItem { Label(L10n.tr("settings.tab.hotkeys", lang: viewModel.preferences.appLanguage), systemImage: "keyboard") }
             }
-            Text(L10n.tr("common.changesNotAutoSaved", lang: viewModel.preferences.appLanguage))
-                .footnoteStyle()
-                .foregroundColor(.secondary)
-                .padding(.top, 2)
-        }
-        .padding(.horizontal, 16)
-        .padding(.top, 16)
-        .padding(.bottom, 0)
-        .safeAreaInset(edge: .bottom) {
-            HStack(spacing: 8) {
-                Button(L10n.tr("common.resetDefaults", lang: viewModel.preferences.appLanguage)) {
-                    resetConfirmPresented = true
-                }
-                .buttonCursor()
-                Button(L10n.tr("common.import", lang: viewModel.preferences.appLanguage)) {
-                    if let imported = viewModel.importPreferencesFromJSON() {
-                        // Load into draft only; user must click Save to apply
-                        draft.load(from: imported)
-                    }
-                }
-                .buttonCursor()
-                Button(L10n.tr("common.export", lang: viewModel.preferences.appLanguage)) {
-                    viewModel.exportPreferencesToJSON()
-                }
-                .buttonCursor()
-                Spacer()
-                Button(action: {
-                    let newPrefs = Preferences(
-                        translationProvider: draft.translationProvider,
-                        appLanguage: draft.appLanguage,
-                        baseURL: draft.baseURL,
-                        model: draft.model,
-                        apiKey: draft.apiKey,
-                        deepLBaseURL: draft.deepLBaseURL,
-                        deepLAPIKey: draft.deepLAPIKey,
-                        deepLAPIFamily: draft.deepLAPIFamily,
-                        deepLCustomCapability: draft.deepLCustomCapability,
-                        detectionEngine: draft.detectionEngine,
-                        defaultTargetLanguage: draft.defaultTargetLanguage,
-                        proxyType: draft.proxyType,
-                        proxyHost: draft.proxyHost,
-                        proxyPort: draft.proxyPort,
-                        proxyUsername: draft.proxyUsername,
-                        proxyPassword: draft.proxyPassword,
-                        noProxyTargets: draft.noProxyTargets,
-                        alwaysOnTop: viewModel.preferences.alwaysOnTop,
-                        splitRatio: viewModel.preferences.splitRatio,
-                        shortcutShowWindow: draft.shortcutShowWindow,
-                        shortcutToggleMode: draft.shortcutToggleMode,
-                        shortcutQuickCopy: draft.shortcutQuickCopy,
-                        sendKey: draft.sendKey,
-                        historyMaxRecords: draft.historyMaxRecords
-                    )
-                    viewModel.preferences = newPrefs
-                    viewModel.savePreferences()
-                    withAnimation(Animations.bouncySpring) { saveCheckVisible = true }
-                    Task {
-                        try? await Task.sleep(nanoseconds: 1_500_000_000)
-                        await MainActor.run { withAnimation(Animations.standard) { saveCheckVisible = false } }
-                    }
-                }) {
-                    ZStack {
-                        Text(L10n.tr("common.save", lang: viewModel.preferences.appLanguage))
-                            .opacity(saveCheckVisible ? 0 : 1)
-                            .scaleEffect(saveCheckVisible ? 0.5 : 1.0)
 
-                        Image(systemName: "checkmark.circle.fill")
-                            .foregroundColor(AppColors.success)
-                            .opacity(saveCheckVisible ? 1 : 0)
-                            .scaleEffect(saveCheckVisible ? 1.2 : 0.5)
-                    }
-                    .animation(Animations.bouncySpring, value: saveCheckVisible)
-                }
-                .buttonCursor()
-                .disabled(!canSave)
-            }
-            .padding(16)
-            .background(.bar)
+            settingsFooter
         }
-
+        .controlSize(.regular)
+        .background(AppColors.windowBackground)
         .alert(L10n.tr("settings.reset.confirm.title", lang: viewModel.preferences.appLanguage), isPresented: $resetConfirmPresented) {
             Button(L10n.tr("common.cancel", lang: viewModel.preferences.appLanguage), role: .cancel) {}
                 .buttonCursor()
@@ -184,11 +164,103 @@ struct SettingsView: View {
             draft.load(from: viewModel.preferences)
         }
     }
+
+    private var settingsFooter: some View {
+        VStack(spacing: 0) {
+            Divider()
+
+            HStack(spacing: 8) {
+                Button(L10n.tr("common.resetDefaults", lang: viewModel.preferences.appLanguage)) {
+                    resetConfirmPresented = true
+                }
+                .buttonCursor()
+
+                Button(L10n.tr("common.import", lang: viewModel.preferences.appLanguage)) {
+                    if let imported = viewModel.importPreferencesFromJSON() {
+                        // Load into draft only; user must click Save to apply
+                        draft.load(from: imported)
+                    }
+                }
+                .buttonCursor()
+
+                Button(L10n.tr("common.export", lang: viewModel.preferences.appLanguage)) {
+                    viewModel.exportPreferencesToJSON()
+                }
+                .buttonCursor()
+
+                Spacer(minLength: 12)
+
+                Text(L10n.tr("common.changesNotAutoSaved", lang: viewModel.preferences.appLanguage))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.trailing)
+                    .lineLimit(2)
+                    .frame(maxWidth: 220, alignment: .trailing)
+
+                Button(action: savePreferences) {
+                    ZStack {
+                        Text(L10n.tr("common.save", lang: viewModel.preferences.appLanguage))
+                            .opacity(saveCheckVisible ? 0 : 1)
+                            .scaleEffect(saveCheckVisible ? 0.5 : 1.0)
+
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(AppColors.success)
+                            .opacity(saveCheckVisible ? 1 : 0)
+                            .scaleEffect(saveCheckVisible ? 1.2 : 0.5)
+                    }
+                    .frame(minWidth: 44)
+                    .animation(Animations.bouncySpring, value: saveCheckVisible)
+                }
+                .keyboardShortcut(.defaultAction)
+                .buttonCursor()
+                .disabled(!canSave)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+        }
+        .background(.bar)
+    }
+
+    private func savePreferences() {
+        let newPrefs = Preferences(
+            translationProvider: draft.translationProvider,
+            appLanguage: draft.appLanguage,
+            baseURL: draft.baseURL,
+            model: draft.model,
+            apiKey: draft.apiKey,
+            deepLBaseURL: draft.deepLBaseURL,
+            deepLAPIKey: draft.deepLAPIKey,
+            deepLAPIFamily: draft.deepLAPIFamily,
+            deepLCustomCapability: draft.deepLCustomCapability,
+            detectionEngine: draft.detectionEngine,
+            defaultTargetLanguage: draft.defaultTargetLanguage,
+            proxyType: draft.proxyType,
+            proxyHost: draft.proxyHost,
+            proxyPort: draft.proxyPort,
+            proxyUsername: draft.proxyUsername,
+            proxyPassword: draft.proxyPassword,
+            noProxyTargets: draft.noProxyTargets,
+            alwaysOnTop: viewModel.preferences.alwaysOnTop,
+            splitRatio: viewModel.preferences.splitRatio,
+            shortcutShowWindow: draft.shortcutShowWindow,
+            shortcutToggleMode: draft.shortcutToggleMode,
+            shortcutQuickCopy: draft.shortcutQuickCopy,
+            sendKey: draft.sendKey,
+            historyMaxRecords: draft.historyMaxRecords
+        )
+        viewModel.preferences = newPrefs
+        viewModel.savePreferences()
+        withAnimation(Animations.bouncySpring) { saveCheckVisible = true }
+        Task {
+            try? await Task.sleep(nanoseconds: 1_500_000_000)
+            await MainActor.run { withAnimation(Animations.standard) { saveCheckVisible = false } }
+        }
+    }
 }
 
 struct SettingsView_Previews: PreviewProvider {
     static var previews: some View {
         SettingsView(viewModel: AppViewModel())
-            .frame(width: 520, height: 420)
+            .frame(width: 660, height: 480)
     }
 }

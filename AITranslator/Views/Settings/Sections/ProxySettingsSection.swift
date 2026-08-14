@@ -6,13 +6,10 @@ struct ProxySettingsSection: View {
     @Binding var proxyTestState: SettingsView.ProxyTestState
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(L10n.tr("settings.proxy.title", lang: viewModel.preferences.appLanguage))
-                .headlineStyle()
-                .foregroundColor(.primary)
-            Grid(horizontalSpacing: 8, verticalSpacing: 6) {
+        SettingsPage(L10n.tr("settings.proxy.title", lang: viewModel.preferences.appLanguage)) {
+            SettingsFormGrid {
                 GridRow {
-                    Text(L10n.tr("settings.proxy.type", lang: viewModel.preferences.appLanguage))
+                    fieldLabel("settings.proxy.type")
                     Picker("", selection: $draft.proxyType) {
                         ForEach(ProxyType.allCases) { t in
                             switch t {
@@ -26,16 +23,21 @@ struct ProxySettingsSection: View {
                         }
                     }
                     .labelsHidden()
+                    .settingsFieldControl()
+                    .onChange(of: draft.proxyType) { _, _ in
+                        proxyTestState = .idle
+                    }
                 }
 
                 if draft.proxyType != .none {
                     GridRow {
-                        Text(L10n.tr("settings.proxy.hostPort", lang: viewModel.preferences.appLanguage))
+                        fieldLabel("settings.proxy.hostPort")
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 8) {
                                 TextField(L10n.tr("settings.proxy.host.placeholder", lang: viewModel.preferences.appLanguage), text: $draft.proxyHost)
                                     .onChange(of: draft.proxyHost) { _, newValue in
                                         draft.proxyHost = newValue.trimmingCharacters(in: .whitespaces)
+                                        proxyTestState = .idle
                                     }
                                     .overlay(
                                         RoundedRectangle(cornerRadius: 6, style: .continuous)
@@ -54,6 +56,7 @@ struct ProxySettingsSection: View {
                                     } else if newValue > 65535 {
                                         draft.proxyPort = 65535
                                     }
+                                    proxyTestState = .idle
                                 }
                                 .overlay(
                                     RoundedRectangle(cornerRadius: 6, style: .continuous)
@@ -65,71 +68,55 @@ struct ProxySettingsSection: View {
                             if !draft.isProxyValid {
                                 Text(L10n.tr("settings.proxy.invalid", lang: viewModel.preferences.appLanguage))
                                     .footnoteStyle()
-                                    .foregroundColor(AppColors.error)
+                                    .foregroundStyle(AppColors.error)
                             }
                         }
+                        .settingsFieldControl()
                     }
-
-                GridRow {
-                    Text(L10n.tr("settings.proxy.noProxyTargets", lang: viewModel.preferences.appLanguage))
-                    TextField(
-                        L10n.tr("settings.proxy.noProxyTargets.placeholder", lang: viewModel.preferences.appLanguage),
-                        text: $draft.noProxyTargets,
-                        prompt: Text("localhost,127.0.0.1")
-                    )
-                    .onChange(of: draft.noProxyTargets) { _, newValue in
-                        draft.noProxyTargets = newValue
-                            .split(separator: ",")
-                            .map { $0.trimmingCharacters(in: .whitespaces) }
-                            .joined(separator: ",")
-                    }
-                    .help(L10n.tr("settings.proxy.noProxyTargets.help", lang: viewModel.preferences.appLanguage))
-                }
 
                     GridRow {
-                        Text(L10n.tr("settings.proxy.credentials", lang: viewModel.preferences.appLanguage))
+                        fieldLabel("settings.proxy.noProxyTargets")
+                        TextField(
+                            L10n.tr("settings.proxy.noProxyTargets.placeholder", lang: viewModel.preferences.appLanguage),
+                            text: $draft.noProxyTargets,
+                            prompt: Text("localhost,127.0.0.1")
+                        )
+                        .settingsFieldControl()
+                        .onChange(of: draft.noProxyTargets) { _, newValue in
+                            draft.noProxyTargets = newValue
+                                .split(separator: ",")
+                                .map { $0.trimmingCharacters(in: .whitespaces) }
+                                .joined(separator: ",")
+                            proxyTestState = .idle
+                        }
+                        .help(L10n.tr("settings.proxy.noProxyTargets.help", lang: viewModel.preferences.appLanguage))
+                    }
+
+                    GridRow {
+                        fieldLabel("settings.proxy.credentials")
                         HStack(spacing: 8) {
                             TextField(L10n.tr("settings.proxy.username.placeholder", lang: viewModel.preferences.appLanguage), text: $draft.proxyUsername)
                                 .onChange(of: draft.proxyUsername) { _, newValue in
                                     draft.proxyUsername = newValue.trimmingCharacters(in: .whitespaces)
+                                    proxyTestState = .idle
                                 }
                             SecureField(L10n.tr("settings.proxy.password.placeholder", lang: viewModel.preferences.appLanguage), text: $draft.proxyPassword)
                                 .onChange(of: draft.proxyPassword) { _, newValue in
                                     draft.proxyPassword = newValue.trimmingCharacters(in: .whitespaces)
+                                    proxyTestState = .idle
                                 }
                         }
+                        .settingsFieldControl()
                     }
 
                     GridRow {
                         Text("")
+                            .settingsFieldLabel()
+                            .accessibilityHidden(true)
                         HStack(spacing: 8) {
-                            Button(action: {
-                                withAnimation(.none) { proxyTestState = .testing }
-                                let host = draft.proxyHost.trimmingCharacters(in: .whitespacesAndNewlines)
-                                let port = draft.proxyPort
-                                guard !host.isEmpty, (1...65535).contains(port) else {
-                                    withAnimation(.none) { proxyTestState = .failure }
-                                    return
-                                }
-                                let username = draft.proxyUsername.trimmingCharacters(in: .whitespacesAndNewlines)
-                                let password = draft.proxyPassword
-                                let proxy = HTTPClient.ProxySettings(
-                                    type: draft.proxyType,
-                                    host: host,
-                                    port: port,
-                                    username: username.isEmpty ? nil : username,
-                                    password: password.isEmpty ? nil : password,
-                                    noProxyHosts: []
-                                )
-                                Task {
-                                    let ok = await HTTPClient.testProxy(proxy)
-                                    await MainActor.run { withAnimation(.none) { proxyTestState = ok ? .success : .failure } }
-                                }
-                            }) {
-                        Text(L10n.tr("settings.proxy.test", lang: viewModel.preferences.appLanguage))
-                    }
-                    .buttonCursor()
-                    .disabled(!draft.isProxyValid)
+                            Button(L10n.tr("settings.proxy.test", lang: viewModel.preferences.appLanguage), action: testProxy)
+                                .buttonCursor()
+                                .disabled(!draft.isProxyValid || proxyTestState == .testing)
 
                             ZStack {
                                 switch proxyTestState {
@@ -145,10 +132,45 @@ struct ProxySettingsSection: View {
                             }
                             .frame(width: 18, height: 18)
                         }
+                        .settingsFieldControl()
                     }
                 }
             }
-            Spacer(minLength: 0)
+        }
+    }
+
+    private func fieldLabel(_ key: String) -> some View {
+        Text(L10n.tr(key, lang: viewModel.preferences.appLanguage))
+            .settingsFieldLabel()
+    }
+
+    private func testProxy() {
+        withAnimation(.none) { proxyTestState = .testing }
+        let host = draft.proxyHost.trimmingCharacters(in: .whitespacesAndNewlines)
+        let port = draft.proxyPort
+        guard !host.isEmpty, (1...65535).contains(port) else {
+            withAnimation(.none) { proxyTestState = .failure }
+            return
+        }
+
+        let username = draft.proxyUsername.trimmingCharacters(in: .whitespacesAndNewlines)
+        let password = draft.proxyPassword
+        let proxy = HTTPClient.ProxySettings(
+            type: draft.proxyType,
+            host: host,
+            port: port,
+            username: username.isEmpty ? nil : username,
+            password: password.isEmpty ? nil : password,
+            noProxyHosts: []
+        )
+
+        Task {
+            let isReachable = await HTTPClient.testProxy(proxy)
+            await MainActor.run {
+                withAnimation(.none) {
+                    proxyTestState = isReachable ? .success : .failure
+                }
+            }
         }
     }
 }
