@@ -3,7 +3,7 @@ import CFNetwork
 import Network
 
 struct HTTPClient {
-    struct ProxySettings {
+    struct ProxySettings: Equatable, Sendable {
         let type: ProxyType
         let host: String
         let port: Int

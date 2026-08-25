@@ -3,7 +3,7 @@ import XCTest
 @testable import AITranslator
 
 @MainActor
-final class AppViewModelDeepLTests: XCTestCase {
+final class AppViewModelTranslationTests: XCTestCase {
     func testFreeProviderRoutesTranslationToDeepL() async {
         let deepL = DeepLServiceSpy(results: [.success("Hello")])
         let preferences = Preferences(
@@ -96,24 +96,51 @@ final class AppViewModelDeepLTests: XCTestCase {
 
         XCTAssertEqual(viewModel.session.output, "ONE ")
         XCTAssertNotNil(viewModel.session.error)
-        XCTAssertTrue(viewModel.canRetryDeepLFromFailure)
+        XCTAssertTrue(viewModel.canRetryFromFailure)
         XCTAssertEqual(deepL.executions.map(\.text), ["first", "second"])
 
-        viewModel.retryDeepLFromFailure()
+        viewModel.retryFromFailure()
         await waitUntil { !viewModel.session.isStreaming }
 
         XCTAssertEqual(viewModel.session.output, "ONE TWO")
         XCTAssertNil(viewModel.session.error)
-        XCTAssertFalse(viewModel.canRetryDeepLFromFailure)
+        XCTAssertFalse(viewModel.canRetryFromFailure)
         XCTAssertEqual(deepL.executions.map(\.text), ["first", "second", "second"])
+    }
+
+    func testOpenAIProviderStreamsDeltasAndRecordsHistory() async {
+        let openai = OpenAIClientSpy(deltas: ["Hel", "lo"])
+        let preferences = Preferences(
+            translationProvider: .openAI,
+            model: "test-model",
+            apiKey: "key"
+        )
+        let viewModel = makeViewModel(preferences: preferences, openai: openai)
+        viewModel.onInputChanged("你好")
+        viewModel.restoreLanguages(source: "zh-CN", target: "en")
+
+        viewModel.send()
+        await waitUntil { !viewModel.session.isStreaming }
+
+        XCTAssertEqual(viewModel.session.output, "Hello")
+        XCTAssertNil(viewModel.session.error)
+        XCTAssertEqual(viewModel.translationTotalUnits, 0)
+        XCTAssertFalse(viewModel.canRetryFromFailure)
+        XCTAssertEqual(openai.capturedMessages.count, 2)
+        XCTAssertEqual(openai.capturedMessages.first?.role, "system")
+        XCTAssertTrue(openai.capturedMessages.last?.content.hasPrefix("Translate from") == true)
+        XCTAssertTrue(openai.capturedMessages.last?.content.hasSuffix("你好") == true)
+        XCTAssertEqual(viewModel.historyManager.records.first?.provider, .openAICompatible)
+        XCTAssertEqual(viewModel.historyManager.records.first?.service, "test-model")
     }
 
     private func makeViewModel(
         preferences: Preferences,
-        deepL: DeepLServiceSpy? = nil
+        deepL: DeepLServiceSpy? = nil,
+        openai: OpenAIClientSpy? = nil
     ) -> AppViewModel {
         AppViewModel(
-            openai: OpenAIClientSpy(),
+            openai: openai ?? OpenAIClientSpy(),
             deepL: deepL ?? DeepLServiceSpy(),
             preferencesStore: PreferencesStoreSpy(preferences: preferences),
             hotkeys: HotkeyManagerSpy()
@@ -173,7 +200,14 @@ private final class DeepLServiceSpy: DeepLServicing {
     }
 }
 
-private struct OpenAIClientSpy: OpenAIStreamingClient {
+private final class OpenAIClientSpy: OpenAIStreamingClient {
+    private(set) var capturedMessages: [OpenAIClient.RequestBody.Message] = []
+    private let deltas: [String]
+
+    init(deltas: [String] = []) {
+        self.deltas = deltas
+    }
+
     func stream(
         baseURL: String,
         apiKey: String,
@@ -182,7 +216,12 @@ private struct OpenAIClientSpy: OpenAIStreamingClient {
         parameters: AITaskParameters,
         proxy: HTTPClient.ProxySettings?
     ) -> AsyncThrowingStream<String, Error> {
-        AsyncThrowingStream { continuation in
+        capturedMessages = messages
+        let deltas = self.deltas
+        return AsyncThrowingStream { continuation in
+            for delta in deltas {
+                continuation.yield(delta)
+            }
             continuation.finish()
         }
     }

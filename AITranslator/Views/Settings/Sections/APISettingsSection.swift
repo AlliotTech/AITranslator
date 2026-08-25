@@ -212,7 +212,7 @@ struct APISettingsSection: View {
         }
     }
 
-    private func providerOption(_ provider: TranslationProvider, key: String) -> some View {
+    private func providerOption(_ provider: TranslationProviderKind, key: String) -> some View {
         Text(L10n.tr(key, lang: viewModel.preferences.appLanguage)).tag(provider)
     }
 

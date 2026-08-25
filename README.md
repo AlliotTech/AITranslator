@@ -200,6 +200,11 @@ AITranslator/
 │   │   └── SSEParser.swift
 │   ├── DeepL/                    # DeepL /v2 and Legacy DeepLX client
 │   │   └── DeepLClient.swift
+│   ├── Translation/              # Provider-agnostic translation layer
+│   │   ├── TranslationEvent.swift        # delta/reset/progress events + resume token
+│   │   ├── TranslationProvider.swift     # provider protocol, capabilities, resolver
+│   │   ├── OpenAITranslationProvider.swift
+│   │   └── DeepLTranslationProvider.swift
 │   ├── Detection/                # Language detection
 │   │   ├── LanguageDetector.swift
 │   │   └── LanguageUtils.swift
@@ -476,6 +481,11 @@ AITranslator/
 │   │   └── SSEParser.swift
 │   ├── DeepL/                    # DeepL /v2 与 Legacy DeepLX 客户端
 │   │   └── DeepLClient.swift
+│   ├── Translation/              # 与提供方无关的翻译层
+│   │   ├── TranslationEvent.swift        # delta/reset/progress 事件与续传句柄
+│   │   ├── TranslationProvider.swift     # 提供方协议、能力声明与解析器
+│   │   ├── OpenAITranslationProvider.swift
+│   │   └── DeepLTranslationProvider.swift
 │   ├── Detection/                # 语言检测
 │   │   ├── LanguageDetector.swift
 │   │   └── LanguageUtils.swift

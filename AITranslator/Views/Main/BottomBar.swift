@@ -7,19 +7,19 @@ struct BottomBar: View {
     var body: some View {
         HStack(spacing: 8) {
             if viewModel.session.isStreaming,
-               viewModel.deepLTotalChunks > 1 {
+               viewModel.translationTotalUnits > 1 {
                 Text(String(
-                    format: L10n.tr("progress.deepL.chunks", lang: viewModel.preferences.appLanguage),
-                    viewModel.deepLCompletedChunks,
-                    viewModel.deepLTotalChunks
+                    format: L10n.tr("progress.chunks", lang: viewModel.preferences.appLanguage),
+                    viewModel.translationCompletedUnits,
+                    viewModel.translationTotalUnits
                 ))
                 .font(.caption)
                 .foregroundColor(.secondary)
             }
 
-            if !viewModel.session.isStreaming && viewModel.canRetryDeepLFromFailure {
+            if !viewModel.session.isStreaming && viewModel.canRetryFromFailure {
                 Button(L10n.tr("btn.retry", lang: viewModel.preferences.appLanguage)) {
-                    viewModel.retryDeepLFromFailure()
+                    viewModel.retryFromFailure()
                 }
                 .buttonCursor()
             }

@@ -72,17 +72,6 @@ struct RememberedTargetLanguages {
     }
 }
 
-struct DeepLResumeState {
-    let input: String
-    let sourceLanguage: String
-    let targetLanguage: String
-    let mode: AppMode
-    let context: DeepLRequestContext
-    let chunks: [DeepLTextChunk]
-    let nextChunkIndex: Int
-    let completedOutput: String
-}
-
 @MainActor
 final class AppViewModel: ObservableObject {
     @Published var preferences: Preferences
@@ -99,9 +88,9 @@ final class AppViewModel: ObservableObject {
     // 长文本模式标识（用于UI显示进度提示）
     @Published var isInLongTextMode: Bool = false
 
-    @Published var deepLCompletedChunks: Int = 0
-    @Published var deepLTotalChunks: Int = 0
-    @Published var canRetryDeepLFromFailure: Bool = false
+    @Published var translationCompletedUnits: Int = 0
+    @Published var translationTotalUnits: Int = 0
+    @Published var canRetryFromFailure: Bool = false
 
     // 历史记录管理器
     @Published var historyManager: HistoryManager
@@ -109,8 +98,8 @@ final class AppViewModel: ObservableObject {
     // 历史记录窗口管理器（不需要 @Published，因为窗口状态不需要驱动UI更新）
     let historyWindowManager: HistoryWindowManager
 
-    private let openai: OpenAIStreamingClient
     private let deepL: DeepLServicing
+    private let providerResolver: any TranslationProviderResolving
     private var streamTask: Task<Void, Never>?
     private let preferencesStore: PreferencesPersisting
     private var sessionCancellable: AnyCancellable?
@@ -135,7 +124,7 @@ final class AppViewModel: ObservableObject {
     // 累积多个delta后批量更新UI，大幅降低CPU占用
     private var outputBuffer: String = ""
     private var bufferUpdateTask: Task<Void, Never>?
-    private var deepLResumeState: DeepLResumeState?
+    private var resumeToken: (any TranslationResumeToken)?
 
     // 自适应批量更新间隔（毫秒）：根据文本长度动态调整
     // 短文本：更新频繁（流畅）；长文本：更新稀疏甚至暂停（降低CPU）
@@ -156,13 +145,13 @@ final class AppViewModel: ObservableObject {
 
     var isStreaming: Bool { session.isStreaming }
 
-    var isPolishAvailable: Bool {
-        preferences.translationProvider == .openAI || preferences.deepLSupportsWrite
+    private var currentCapabilities: TranslationCapabilities {
+        providerResolver.provider(for: preferences).capabilities
     }
 
-    var isSummarizeAvailable: Bool {
-        preferences.translationProvider == .openAI
-    }
+    var isPolishAvailable: Bool { currentCapabilities.supportsPolish }
+
+    var isSummarizeAvailable: Bool { currentCapabilities.supportsSummarize }
 
     // Send button should be disabled when input is empty or whitespace-only
     var isSendDisabled: Bool {
@@ -217,14 +206,7 @@ final class AppViewModel: ObservableObject {
     }
 
     func isModeAvailable(_ mode: AppMode) -> Bool {
-        switch mode {
-        case .translate:
-            return true
-        case .polish:
-            return isPolishAvailable
-        case .summarize:
-            return isSummarizeAvailable
-        }
+        currentCapabilities.supports(mode)
     }
 
     private func enforceAvailableMode(showNotice: Bool) {
@@ -235,13 +217,11 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    private func resetDeepLProgress(clearResumeState: Bool = true) {
-        deepLCompletedChunks = 0
-        deepLTotalChunks = 0
-        canRetryDeepLFromFailure = false
-        if clearResumeState {
-            deepLResumeState = nil
-        }
+    private func resetTranslationProgress() {
+        translationCompletedUnits = 0
+        translationTotalUnits = 0
+        canRetryFromFailure = false
+        resumeToken = nil
     }
 
     private func deepLConfiguration(from preferences: Preferences) -> DeepLServiceConfiguration {
@@ -253,48 +233,14 @@ final class AppViewModel: ObservableObject {
         )
     }
 
-    private func currentDeepLContext() throws -> DeepLRequestContext {
-        let operation: DeepLTextOperation
-        switch session.mode {
-        case .translate:
-            operation = .translate
-        case .polish:
-            guard preferences.deepLSupportsWrite else {
-                throw DeepLServiceError(
-                    statusCode: nil,
-                    message: L10n.tr("error.deepL.writeUnavailable", lang: preferences.appLanguage)
-                )
-            }
-            operation = .rephrase
-        case .summarize:
-            throw DeepLServiceError(
-                statusCode: nil,
-                message: L10n.tr("error.deepL.summarizeUnavailable", lang: preferences.appLanguage)
-            )
-        }
-
-        return DeepLRequestContext(
-            configuration: deepLConfiguration(from: preferences),
-            operation: operation,
+    private func currentRequest(proxy: HTTPClient.ProxySettings?) -> TranslationRequest {
+        TranslationRequest(
+            mode: session.mode,
+            input: session.input,
             sourceLanguage: session.sourceLang,
-            targetLanguage: session.mode == .polish ? session.sourceLang : session.targetLang
+            targetLanguage: session.targetLang,
+            proxy: proxy
         )
-    }
-
-    private func currentHistoryMetadata() -> (HistoryProvider, String) {
-        switch preferences.translationProvider {
-        case .openAI:
-            return (.openAICompatible, preferences.model)
-        case .deepLFree:
-            return (.deepLCompatible, "DeepL API Free")
-        case .deepLPro:
-            return (.deepLCompatible, "DeepL API Pro")
-        case .deepLCustom:
-            let service = preferences.resolvedDeepLAPIFamily == .legacyDeepLX
-                ? "Legacy DeepLX"
-                : "Custom DeepL /v2"
-            return (.deepLCompatible, service)
-        }
     }
 
     /// 构建代理配置（统一方法，避免重复代码）
@@ -398,8 +344,8 @@ final class AppViewModel: ObservableObject {
         preferencesStore: PreferencesPersisting,
         hotkeys: HotkeyManaging
     ) {
-        self.openai = openai
         self.deepL = deepL
+        self.providerResolver = DefaultTranslationProviderResolver(openAI: openai, deepL: deepL)
         self.preferencesStore = preferencesStore
         self.hotkeys = hotkeys
 
@@ -458,8 +404,7 @@ final class AppViewModel: ObservableObject {
         // 所有存储属性初始化完成后，同步历史记录配置
         self.historyManager.maxRecords = loadedPreferences.historyMaxRecords
 
-        if loadedPreferences.translationProvider.isDeepL,
-           session.mode == .summarize || (session.mode == .polish && !loadedPreferences.deepLSupportsWrite) {
+        if !providerResolver.provider(for: loadedPreferences).capabilities.supports(session.mode) {
             session.mode = .translate
         }
 
@@ -519,7 +464,7 @@ final class AppViewModel: ObservableObject {
 
         preferencesStore.save(preferences)
         applyHotkeysFromPreferences()
-        resetDeepLProgress()
+        resetTranslationProgress()
         enforceAvailableMode(showNotice: true)
 
         // 代理配置变更时，清理所有缓存的URLSession以避免使用旧配置
@@ -544,7 +489,7 @@ final class AppViewModel: ObservableObject {
 
     func onInputChanged(_ newValue: String) {
         guard session.input != newValue else { return }
-        resetDeepLProgress()
+        resetTranslationProgress()
         session.input = newValue
         // Do not detect on input; detection will run on send() when needed
         if newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -572,7 +517,7 @@ final class AppViewModel: ObservableObject {
     func setSourceLang(_ code: String) {
         let coerced = LanguageUtils.coerceToSupported(code: code, fallback: "en")
         if session.sourceLang != coerced { session.sourceLang = coerced }
-        resetDeepLProgress()
+        resetTranslationProgress()
 
         // 标记用户已手动指定源语言
         languageOverride.source = true
@@ -598,7 +543,7 @@ final class AppViewModel: ObservableObject {
 
     func setTargetLang(_ code: String) {
         session.targetLang = LanguageUtils.coerceToSupported(code: code, fallback: "en")
-        resetDeepLProgress()
+        resetTranslationProgress()
 
         // 标记用户已手动指定目标语言
         languageOverride.target = true
@@ -622,7 +567,7 @@ final class AppViewModel: ObservableObject {
         let tmp = session.sourceLang
         session.sourceLang = session.targetLang
         session.targetLang = tmp
-        resetDeepLProgress()
+        resetTranslationProgress()
 
         // 交换语言是明确的用户操作，标记为手动指定
         languageOverride.source = true
@@ -653,7 +598,7 @@ final class AppViewModel: ObservableObject {
         // 重置长文本模式
         isLongTextMode = false
         isInLongTextMode = false
-        resetDeepLProgress()
+        resetTranslationProgress()
 
         streamGeneration &+= 1
         let generation = streamGeneration
@@ -706,50 +651,57 @@ final class AppViewModel: ObservableObject {
                 }
             }
 
-            let completed: Bool
-            if self.preferences.translationProvider == .openAI {
-                completed = await self.performOpenAIRequest(proxy: proxy, generation: generation)
-            } else {
-                completed = await self.performDeepLRequest(proxy: proxy, generation: generation)
-            }
+            let provider = self.providerResolver.provider(for: self.preferences)
+            let completed = await self.consume(
+                provider.events(for: self.currentRequest(proxy: proxy)),
+                delivery: provider.delivery,
+                generation: generation
+            )
 
-            self.finishRequest(completed: completed, generation: generation)
+            self.finishRequest(
+                completed: completed,
+                identity: provider.identity,
+                generation: generation
+            )
         }
     }
 
-    func retryDeepLFromFailure() {
-        let currentContext = try? currentDeepLContext()
-        guard let resumeState = deepLResumeState,
-              canRetryDeepLFromFailure,
-              !session.isStreaming,
-              resumeState.input == session.input,
-              resumeState.sourceLanguage == session.sourceLang,
-              resumeState.targetLanguage == session.targetLang,
-              resumeState.mode == session.mode,
-              resumeState.context == currentContext else {
-            resetDeepLProgress()
+    /// 从上次失败处续传（仅当提供方支持且句柄与当前请求兼容）
+    func retryFromFailure() {
+        guard let token = resumeToken,
+              canRetryFromFailure,
+              !session.isStreaming else {
+            resetTranslationProgress()
+            return
+        }
+
+        let provider = providerResolver.provider(for: preferences)
+        let request = currentRequest(proxy: buildProxySettings())
+        guard let events = provider.resumeEvents(from: token, request: request) else {
+            resetTranslationProgress()
             return
         }
 
         session.error = nil
-        session.output = resumeState.completedOutput
         session.isStreaming = true
-        canRetryDeepLFromFailure = false
+        canRetryFromFailure = false
+        outputBuffer = ""
         Accessibility.announce(L10n.tr("streaming.a11y", lang: preferences.appLanguage))
 
         streamGeneration &+= 1
         let generation = streamGeneration
         streamTask = Task { [weak self] in
             guard let self else { return }
-            let completed = await self.runDeepLChunks(
-                resumeState.chunks,
-                startIndex: resumeState.nextChunkIndex,
-                completedOutput: resumeState.completedOutput,
-                context: resumeState.context,
-                proxy: self.buildProxySettings(),
+            let completed = await self.consume(
+                events,
+                delivery: provider.delivery,
                 generation: generation
             )
-            self.finishRequest(completed: completed, generation: generation)
+            self.finishRequest(
+                completed: completed,
+                identity: provider.identity,
+                generation: generation
+            )
         }
     }
 
@@ -764,66 +716,56 @@ final class AppViewModel: ObservableObject {
         flushOutputBuffer()
 
         session.isStreaming = false
-        resetDeepLProgress()
+        resetTranslationProgress()
     }
 
-    private func performOpenAIRequest(
-        proxy: HTTPClient.ProxySettings?,
+    /// 消费提供方事件流，是所有提供方共用的唯一执行路径
+    private func consume(
+        _ events: AsyncThrowingStream<TranslationEvent, Error>,
+        delivery: TranslationDelivery,
         generation: Int
     ) async -> Bool {
-        let messages: [OpenAIClient.RequestBody.Message] = {
-            switch session.mode {
-            case .polish:
-                let sourceName = LanguageUtils.displayName(for: session.sourceLang)
-                let systemPrompt = "You are an expert language editor. Reply with only the edited text, without any explanations or notes."
-                let userPrompt = "Polish the following \(sourceName) text to improve clarity and naturalness while preserving the original meaning:\n\n\(session.input)"
-                return [
-                    .init(role: "system", content: systemPrompt),
-                    .init(role: "user", content: userPrompt)
-                ]
-
-            case .translate:
-                let targetName = LanguageUtils.displayName(for: session.targetLang)
-                let sourceName = LanguageUtils.displayName(for: session.sourceLang)
-                let systemPrompt = "You are a professional translator. Reply with only the translated text, without any explanations or notes."
-                let userPrompt = "Translate from \(sourceName) to \(targetName):\n\n\(session.input)"
-                return [
-                    .init(role: "system", content: systemPrompt),
-                    .init(role: "user", content: userPrompt)
-                ]
-
-            case .summarize:
-                let targetName = LanguageUtils.displayName(for: session.targetLang)
-                let systemPrompt = "You are a professional text summarizer. Reply with only the summary, without any explanations or notes."
-                let userPrompt = "Summarize the following text in \(targetName), keeping the key information:\n\n\(session.input)"
-                return [
-                    .init(role: "system", content: systemPrompt),
-                    .init(role: "user", content: userPrompt)
-                ]
-            }
-        }()
-
-        await startBatchUpdateTask(generation: generation)
+        if delivery == .incrementalStream {
+            await startBatchUpdateTask(generation: generation)
+        }
 
         do {
-            for try await delta in openai.stream(
-                baseURL: preferences.baseURL,
-                apiKey: preferences.apiKey,
-                model: preferences.model,
-                messages: messages,
-                parameters: AITaskParameters.parameters(for: session.mode),
-                proxy: proxy
-            ) {
+            for try await event in events {
                 guard streamGeneration == generation else { return false }
-                outputBuffer.append(delta)
+                switch event {
+                case .delta(let text):
+                    outputBuffer.append(text)
+                    // 分块提供方每块到达即刷新，不参与流式批量节流
+                    if delivery == .chunkedBatches {
+                        flushOutputBuffer()
+                    }
+
+                case .reset(let text):
+                    outputBuffer = ""
+                    session.output = text
+
+                case let .progress(completed, total):
+                    translationCompletedUnits = completed
+                    translationTotalUnits = total
+                }
             }
             guard streamGeneration == generation else { return false }
             flushOutputBuffer()
+            resumeToken = nil
+            canRetryFromFailure = false
             return true
         } catch is CancellationError {
             return false
         } catch let error as URLError where error.code == .cancelled {
             return false
+        } catch let failure as TranslationFailure {
+            guard streamGeneration == generation else { return false }
+            flushOutputBuffer()
+            session.error = failure.message
+            resumeToken = failure.resumeToken
+            canRetryFromFailure = failure.resumeToken != nil
+            Accessibility.announce(L10n.tr("failed", lang: preferences.appLanguage))
+            return false
         } catch {
             guard streamGeneration == generation else { return false }
             flushOutputBuffer()
@@ -833,88 +775,11 @@ final class AppViewModel: ObservableObject {
         }
     }
 
-    private func performDeepLRequest(
-        proxy: HTTPClient.ProxySettings?,
+    private func finishRequest(
+        completed: Bool,
+        identity: TranslationProviderIdentity,
         generation: Int
-    ) async -> Bool {
-        do {
-            let context = try currentDeepLContext()
-            let chunks = try deepL.prepareChunks(text: session.input, context: context)
-            guard !chunks.isEmpty else { return false }
-            return await runDeepLChunks(
-                chunks,
-                startIndex: 0,
-                completedOutput: "",
-                context: context,
-                proxy: proxy,
-                generation: generation
-            )
-        } catch {
-            guard streamGeneration == generation else { return false }
-            session.error = error.localizedDescription
-            Accessibility.announce(L10n.tr("failed", lang: preferences.appLanguage))
-            return false
-        }
-    }
-
-    private func runDeepLChunks(
-        _ chunks: [DeepLTextChunk],
-        startIndex: Int,
-        completedOutput: String,
-        context: DeepLRequestContext,
-        proxy: HTTPClient.ProxySettings?,
-        generation: Int
-    ) async -> Bool {
-        deepLTotalChunks = chunks.count
-        deepLCompletedChunks = startIndex
-        session.output = completedOutput
-
-        for index in startIndex..<chunks.count {
-            do {
-                let translated = try await deepL.execute(
-                    text: chunks[index].text,
-                    context: context,
-                    proxy: proxy
-                )
-                guard streamGeneration == generation else { return false }
-                session.output.append(translated)
-                session.output.append(chunks[index].separatorAfter)
-                deepLCompletedChunks = index + 1
-            } catch is CancellationError {
-                return false
-            } catch let error as URLError where error.code == .cancelled {
-                return false
-            } catch {
-                guard streamGeneration == generation else { return false }
-                let message = String(
-                    format: L10n.tr("error.deepL.chunkFailure", lang: preferences.appLanguage),
-                    index + 1,
-                    chunks.count,
-                    error.localizedDescription
-                )
-                session.error = message
-                deepLResumeState = DeepLResumeState(
-                    input: session.input,
-                    sourceLanguage: session.sourceLang,
-                    targetLanguage: session.targetLang,
-                    mode: session.mode,
-                    context: context,
-                    chunks: chunks,
-                    nextChunkIndex: index,
-                    completedOutput: session.output
-                )
-                canRetryDeepLFromFailure = true
-                Accessibility.announce(L10n.tr("failed", lang: preferences.appLanguage))
-                return false
-            }
-        }
-
-        deepLResumeState = nil
-        canRetryDeepLFromFailure = false
-        return true
-    }
-
-    private func finishRequest(completed: Bool, generation: Int) {
+    ) {
         bufferUpdateTask?.cancel()
         bufferUpdateTask = nil
         guard streamGeneration == generation else { return }
@@ -924,15 +789,14 @@ final class AppViewModel: ObservableObject {
         guard completed, session.error == nil, !session.output.isEmpty else { return }
 
         Accessibility.announce(L10n.tr("completed.a11y", lang: preferences.appLanguage))
-        let metadata = currentHistoryMetadata()
         historyManager.addRecord(
             mode: session.mode,
             sourceLang: session.sourceLang,
             targetLang: session.targetLang,
             input: session.input,
             output: session.output,
-            provider: metadata.0,
-            service: metadata.1
+            provider: identity.historyProvider,
+            service: identity.service
         )
     }
 
@@ -1120,13 +984,13 @@ final class AppViewModel: ObservableObject {
         languageOverride.reset()
         lastDetectedText = nil
         lastDetectedLang = nil
-        resetDeepLProgress()
+        resetTranslationProgress()
     }
 
     func restoreAfterClear(input: String, output: String) {
         onInputChanged(input)
         session.output = output
-        resetDeepLProgress()
+        resetTranslationProgress()
     }
 
     func restoreLanguages(source: String, target: String) {
@@ -1137,7 +1001,7 @@ final class AppViewModel: ObservableObject {
         if session.mode == .summarize {
             languageOverride.targetInSummarize = true
         }
-        resetDeepLProgress()
+        resetTranslationProgress()
     }
 
     func testDeepLConnection(preferences: Preferences) async throws -> DeepLConnectionTestResult {
@@ -1217,7 +1081,7 @@ extension AppViewModel {
         let oldMode = session.mode
         guard oldMode != newMode else { return }
 
-        resetDeepLProgress()
+        resetTranslationProgress()
         guard isModeAvailable(newMode) else {
             showToast(L10n.tr("toast.mode.switchedToTranslate", lang: preferences.appLanguage))
             return

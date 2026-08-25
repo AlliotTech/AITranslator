@@ -37,7 +37,7 @@ enum SendKey: String, CaseIterable, Codable, Identifiable {
     var id: String { rawValue }
 }
 
-enum TranslationProvider: String, CaseIterable, Codable, Identifiable {
+enum TranslationProviderKind: String, CaseIterable, Codable, Identifiable {
     case openAI
     case deepLFree
     case deepLPro
@@ -63,7 +63,7 @@ enum DeepLCustomCapability: String, CaseIterable, Codable, Identifiable {
 }
 
 final class Preferences: ObservableObject, Codable {
-    @Published var translationProvider: TranslationProvider
+    @Published var translationProvider: TranslationProviderKind
     @Published var appLanguage: AppLanguage
     @Published var baseURL: String
     @Published var model: String
@@ -114,7 +114,7 @@ final class Preferences: ObservableObject, Codable {
     }
 
     init(
-        translationProvider: TranslationProvider = .openAI,
+        translationProvider: TranslationProviderKind = .openAI,
         appLanguage: AppLanguage = .system,
         baseURL: String = "https://api.openai.com/v1/chat/completions",
         model: String = "gpt-5-chat",
@@ -167,7 +167,7 @@ final class Preferences: ObservableObject, Codable {
 
     required init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        translationProvider = try container.decodeIfPresent(TranslationProvider.self, forKey: .translationProvider) ?? .openAI
+        translationProvider = try container.decodeIfPresent(TranslationProviderKind.self, forKey: .translationProvider) ?? .openAI
         appLanguage = try container.decodeIfPresent(AppLanguage.self, forKey: .appLanguage) ?? .system
         baseURL = try container.decodeIfPresent(String.self, forKey: .baseURL) ?? "https://api.openai.com/v1/chat/completions"
         model = try container.decodeIfPresent(String.self, forKey: .model) ?? "gpt-5-chat"
