@@ -277,9 +277,11 @@ struct DeepLClient: DeepLServicing {
                 throw DeepLServiceError(statusCode: http.statusCode, message: "The Legacy DeepLX response could not be decoded.")
             }
             guard envelope.code == 200, let translated = envelope.data else {
+                // DeepLX 成功响应通常不带 message，失败响应才带
+                let message = envelope.message?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
                 throw DeepLServiceError(
                     statusCode: envelope.code,
-                    message: envelope.message.isEmpty ? "Legacy DeepLX translation failed." : envelope.message
+                    message: message.isEmpty ? "Legacy DeepLX translation failed." : message
                 )
             }
             return translated
@@ -567,7 +569,7 @@ private extension DeepLClient {
 
     struct LegacyEnvelope: Decodable {
         let code: Int
-        let message: String
+        let message: String?
         let data: String?
     }
 

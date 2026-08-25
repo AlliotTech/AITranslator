@@ -161,6 +161,28 @@ final class DeepLClientTests: XCTestCase {
         XCTAssertEqual(json["text"] as? String, "免费 API")
     }
 
+    func testLegacyResponseWithoutMessageDecodes() async throws {
+        let recorder = RequestRecorder(responses: [
+            .init(
+                statusCode: 200,
+                body: #"{"code":200,"id":1,"data":"你好","alternatives":[],"source_lang":"EN","target_lang":"ZH","backend":"oneshot"}"#
+            )
+        ])
+        let result = try await DeepLClient(dataLoader: recorder.load).execute(
+            text: "hello",
+            context: makeContext(
+                baseURL: "https://example.com",
+                family: .legacyDeepLX,
+                operation: .translate,
+                source: "en",
+                target: "zh-CN"
+            ),
+            proxy: nil
+        )
+
+        XCTAssertEqual(result, "你好")
+    }
+
     func testRetriesRetryableResponses() async throws {
         let recorder = RequestRecorder(responses: [
             .init(statusCode: 500, body: #"{"message":"temporary"}"#),
