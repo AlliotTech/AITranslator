@@ -1,5 +1,4 @@
 import Foundation
-import Combine
 
 enum DetectionEngine: String, CaseIterable, Codable, Identifiable {
     case local
@@ -7,14 +6,6 @@ enum DetectionEngine: String, CaseIterable, Codable, Identifiable {
     case baidu
     case bing
     var id: String { rawValue }
-    var displayName: String {
-        switch self {
-        case .local: return "本地算法"
-        case .google: return "Google"
-        case .baidu: return "Baidu"
-        case .bing: return "Bing"
-        }
-    }
 }
 
 enum ProxyType: String, CaseIterable, Codable, Identifiable {
@@ -22,13 +13,6 @@ enum ProxyType: String, CaseIterable, Codable, Identifiable {
     case http
     case socks5
     var id: String { rawValue }
-    var displayName: String {
-        switch self {
-        case .none: return "不使用"
-        case .http: return "HTTP"
-        case .socks5: return "SOCKS5"
-        }
-    }
 }
 
 enum SendKey: String, CaseIterable, Codable, Identifiable {
@@ -62,48 +46,53 @@ enum DeepLCustomCapability: String, CaseIterable, Codable, Identifiable {
     var id: String { rawValue }
 }
 
-final class Preferences: ObservableObject, Codable {
-    @Published var translationProvider: TranslationProviderKind
-    @Published var appLanguage: AppLanguage
-    @Published var baseURL: String
-    @Published var model: String
-    @Published var apiKey: String
+/// 用户偏好设置（值类型）
+///
+/// `Equatable` 与 `encode(to:)` 均由编译器合成；仅 `init(from:)` 手写，
+/// 用于容忍旧版本 JSON 中缺失的字段。新增偏好项只需改 3 处：
+/// 属性声明、`CodingKeys`、`init` 默认值 + `init(from:)` 的兜底值。
+struct Preferences: Codable, Equatable {
+    var translationProvider: TranslationProviderKind
+    var appLanguage: AppLanguage
+    var baseURL: String
+    var model: String
+    var apiKey: String
 
     // DeepL-compatible API
-    @Published var deepLBaseURL: String
-    @Published var deepLAPIKey: String
-    @Published var deepLAPIFamily: DeepLAPIFamily
-    @Published var deepLCustomCapability: DeepLCustomCapability
+    var deepLBaseURL: String
+    var deepLAPIKey: String
+    var deepLAPIFamily: DeepLAPIFamily
+    var deepLCustomCapability: DeepLCustomCapability
 
     // Language detection
-    @Published var detectionEngine: DetectionEngine
-    @Published var defaultTargetLanguage: String
+    var detectionEngine: DetectionEngine
+    var defaultTargetLanguage: String
 
     // Network proxy
-    @Published var proxyType: ProxyType
-    @Published var proxyHost: String
-    @Published var proxyPort: Int
-    @Published var proxyUsername: String
-    @Published var proxyPassword: String
+    var proxyType: ProxyType
+    var proxyHost: String
+    var proxyPort: Int
+    var proxyUsername: String
+    var proxyPassword: String
     // Comma-separated hostnames/IPs that bypass proxy
-    @Published var noProxyTargets: String
+    var noProxyTargets: String
 
     // Window behavior
-    @Published var alwaysOnTop: Bool
+    var alwaysOnTop: Bool
 
     // Layout
-    @Published var splitRatio: Double
+    var splitRatio: Double
 
     // Global shortcuts (optional)
-    @Published var shortcutShowWindow: KeyboardShortcut?
-    @Published var shortcutToggleMode: KeyboardShortcut?
-    @Published var shortcutQuickCopy: KeyboardShortcut?
+    var shortcutShowWindow: KeyboardShortcut?
+    var shortcutToggleMode: KeyboardShortcut?
+    var shortcutQuickCopy: KeyboardShortcut?
 
     // Send behavior
-    @Published var sendKey: SendKey
+    var sendKey: SendKey
 
     // History settings
-    @Published var historyMaxRecords: Int
+    var historyMaxRecords: Int
 
     enum CodingKeys: CodingKey {
         case translationProvider, appLanguage, baseURL, model, apiKey
@@ -165,7 +154,7 @@ final class Preferences: ObservableObject, Codable {
         self.historyMaxRecords = historyMaxRecords
     }
 
-    required init(from decoder: Decoder) throws {
+    init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         translationProvider = try container.decodeIfPresent(TranslationProviderKind.self, forKey: .translationProvider) ?? .openAI
         appLanguage = try container.decodeIfPresent(AppLanguage.self, forKey: .appLanguage) ?? .system
@@ -194,65 +183,6 @@ final class Preferences: ObservableObject, Codable {
         shortcutQuickCopy = try container.decodeIfPresent(KeyboardShortcut.self, forKey: .shortcutQuickCopy)
         sendKey = try container.decodeIfPresent(SendKey.self, forKey: .sendKey) ?? .cmdEnter
         historyMaxRecords = try container.decodeIfPresent(Int.self, forKey: .historyMaxRecords) ?? 200
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var container = encoder.container(keyedBy: CodingKeys.self)
-        try container.encode(translationProvider, forKey: .translationProvider)
-        try container.encode(appLanguage, forKey: .appLanguage)
-        try container.encode(baseURL, forKey: .baseURL)
-        try container.encode(model, forKey: .model)
-        try container.encode(apiKey, forKey: .apiKey)
-        try container.encode(deepLBaseURL, forKey: .deepLBaseURL)
-        try container.encode(deepLAPIKey, forKey: .deepLAPIKey)
-        try container.encode(deepLAPIFamily, forKey: .deepLAPIFamily)
-        try container.encode(deepLCustomCapability, forKey: .deepLCustomCapability)
-        try container.encode(detectionEngine, forKey: .detectionEngine)
-        try container.encode(defaultTargetLanguage, forKey: .defaultTargetLanguage)
-        try container.encode(proxyType, forKey: .proxyType)
-        try container.encode(proxyHost, forKey: .proxyHost)
-        try container.encode(proxyPort, forKey: .proxyPort)
-        try container.encode(proxyUsername, forKey: .proxyUsername)
-        try container.encode(proxyPassword, forKey: .proxyPassword)
-        try container.encode(noProxyTargets, forKey: .noProxyTargets)
-        try container.encode(alwaysOnTop, forKey: .alwaysOnTop)
-        try container.encode(splitRatio, forKey: .splitRatio)
-        try container.encodeIfPresent(shortcutShowWindow, forKey: .shortcutShowWindow)
-        try container.encodeIfPresent(shortcutToggleMode, forKey: .shortcutToggleMode)
-        try container.encodeIfPresent(shortcutQuickCopy, forKey: .shortcutQuickCopy)
-        try container.encode(sendKey, forKey: .sendKey)
-        try container.encode(historyMaxRecords, forKey: .historyMaxRecords)
-    }
-
-    // MARK: - Helper Methods
-
-    /// 从另一个 Preferences 对象复制所有设置
-    /// - Parameter source: 源 Preferences 对象
-    func load(from source: Preferences) {
-        self.translationProvider = source.translationProvider
-        self.appLanguage = source.appLanguage
-        self.baseURL = source.baseURL
-        self.model = source.model
-        self.apiKey = source.apiKey
-        self.deepLBaseURL = source.deepLBaseURL
-        self.deepLAPIKey = source.deepLAPIKey
-        self.deepLAPIFamily = source.deepLAPIFamily
-        self.deepLCustomCapability = source.deepLCustomCapability
-        self.detectionEngine = source.detectionEngine
-        self.defaultTargetLanguage = source.defaultTargetLanguage
-        self.proxyType = source.proxyType
-        self.proxyHost = source.proxyHost
-        self.proxyPort = source.proxyPort
-        self.proxyUsername = source.proxyUsername
-        self.proxyPassword = source.proxyPassword
-        self.noProxyTargets = source.noProxyTargets
-        self.alwaysOnTop = source.alwaysOnTop
-        self.splitRatio = source.splitRatio
-        self.shortcutShowWindow = source.shortcutShowWindow
-        self.shortcutToggleMode = source.shortcutToggleMode
-        self.shortcutQuickCopy = source.shortcutQuickCopy
-        self.sendKey = source.sendKey
-        self.historyMaxRecords = source.historyMaxRecords
     }
 
     // MARK: - Validation Methods

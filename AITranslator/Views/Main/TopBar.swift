@@ -5,12 +5,14 @@ struct TopBar: View {
     @ObservedObject var viewModel: AppViewModel
     var temporarilyBlurAndRefocus: () -> Void
     @Environment(\.undoManager) private var undoManager
+    @Environment(\.l10n)
+    private var l10n
     @State private var isSwapping = false
 
     var body: some View {
         HStack(spacing: 12) {
             HStack(spacing: 8) {
-                Picker(L10n.tr("picker.source", lang: viewModel.preferences.appLanguage), selection: Binding(
+                Picker(l10n("picker.source"), selection: Binding(
                     get: { viewModel.session.sourceLang },
                     set: { viewModel.setSourceLang($0) }
                 )) {
@@ -20,7 +22,7 @@ struct TopBar: View {
                 }
                 .frame(width: 160)
                 .disabled(viewModel.session.mode == .summarize)
-                .help(L10n.tr("picker.source.help", lang: viewModel.preferences.appLanguage))
+                .help(l10n("picker.source.help"))
                 .onChange(of: viewModel.session.sourceLang) { _, _ in
                     temporarilyBlurAndRefocus()
                 }
@@ -46,24 +48,24 @@ struct TopBar: View {
                         }
                     }
                 }) {
-                    Label(L10n.tr("cmd.swapLanguages", lang: viewModel.preferences.appLanguage), systemImage: "arrow.left.arrow.right.circle")
+                    Label(l10n("cmd.swapLanguages"), systemImage: "arrow.left.arrow.right.circle")
                         .labelStyle(.iconOnly)
                         .rotationEffect(isSwapping ? .degrees(180) : .zero)
                         .animation(Animations.bouncySpring, value: isSwapping)
                 }
                 .secondaryBorderedButton()
                 .keyboardShortcut("s", modifiers: [.command, .shift])
-                .help(viewModel.session.mode == .polish || viewModel.session.mode == .summarize ? L10n.tr("picker.swap.disabled", lang: viewModel.preferences.appLanguage) : L10n.tr("picker.swap.help", lang: viewModel.preferences.appLanguage))
+                .help(viewModel.session.mode == .polish || viewModel.session.mode == .summarize ? l10n("picker.swap.disabled") : l10n("picker.swap.help"))
                 .disabled(
                     viewModel.session.mode == .polish ||
                     viewModel.session.mode == .summarize ||
                     LanguageUtils.standardize(code: viewModel.session.sourceLang).lowercased() ==
                     LanguageUtils.standardize(code: viewModel.session.targetLang).lowercased()
                 )
-                .accessibilityLabel(L10n.tr("picker.swap.a11y", lang: viewModel.preferences.appLanguage))
-                .accessibilityHint(L10n.tr("picker.swap.hint", lang: viewModel.preferences.appLanguage))
+                .accessibilityLabel(l10n("picker.swap.a11y"))
+                .accessibilityHint(l10n("picker.swap.hint"))
 
-                Picker(L10n.tr("picker.target", lang: viewModel.preferences.appLanguage), selection: Binding(
+                Picker(l10n("picker.target"), selection: Binding(
                     get: { viewModel.session.targetLang },
                     set: { viewModel.setTargetLang($0) }
                 )) {
@@ -73,7 +75,7 @@ struct TopBar: View {
                 }
                 .frame(width: 160)
                 .disabled(viewModel.session.mode == .polish)
-                .help(L10n.tr("picker.target.help", lang: viewModel.preferences.appLanguage))
+                .help(l10n("picker.target.help"))
                 .onChange(of: viewModel.session.targetLang) { _, _ in
                     temporarilyBlurAndRefocus()
                 }
@@ -90,9 +92,9 @@ struct TopBar: View {
                     viewModel.setMode(mode)
                 }
             )
-            .help(L10n.tr("picker.mode.help", lang: viewModel.preferences.appLanguage))
-            .accessibilityLabel(L10n.tr("picker.mode", lang: viewModel.preferences.appLanguage))
-            .accessibilityHint(L10n.tr("picker.mode.help", lang: viewModel.preferences.appLanguage))
+            .help(l10n("picker.mode.help"))
+            .accessibilityLabel(l10n("picker.mode"))
+            .accessibilityHint(l10n("picker.mode.help"))
         }
         .padding(.horizontal, Metrics.outerPadding)
         .padding(.top, Metrics.outerPadding)
@@ -101,11 +103,11 @@ struct TopBar: View {
     private func modeTitle(for mode: AppMode) -> String {
         switch mode {
         case .translate:
-            return L10n.tr("mode.translate", lang: viewModel.preferences.appLanguage)
+            return l10n("mode.translate")
         case .polish:
-            return L10n.tr("mode.polish", lang: viewModel.preferences.appLanguage)
+            return l10n("mode.polish")
         case .summarize:
-            return L10n.tr("mode.summarize", lang: viewModel.preferences.appLanguage)
+            return l10n("mode.summarize")
         }
     }
 }

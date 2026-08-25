@@ -8,14 +8,16 @@ enum APIConnectionTestState: Equatable {
 }
 
 struct APISettingsSection: View {
-    @ObservedObject var draft: Preferences
+    @Binding var draft: Preferences
     let viewModel: AppViewModel
     @Binding var revealAPIKey: Bool
     @Binding var revealDeepLAPIKey: Bool
     @Binding var connectionTestState: APIConnectionTestState
+    @Environment(\.l10n)
+    private var l10n
 
     var body: some View {
-        SettingsPage(L10n.tr("settings.api.title", lang: viewModel.preferences.appLanguage)) {
+        SettingsPage(l10n("settings.api.title")) {
             SettingsFormGrid {
                 GridRow {
                     fieldLabel("settings.api.provider")
@@ -41,7 +43,7 @@ struct APISettingsSection: View {
 
             if draft.translationProvider == .deepLCustom {
                 Label(
-                    L10n.tr("settings.api.deepL.custom.warning", lang: viewModel.preferences.appLanguage),
+                    l10n("settings.api.deepL.custom.warning"),
                     systemImage: "exclamationmark.triangle"
                 )
                 .font(.caption)
@@ -96,9 +98,9 @@ struct APISettingsSection: View {
             GridRow {
                 fieldLabel("settings.api.deepL.protocol")
                 Picker("", selection: $draft.deepLAPIFamily) {
-                    Text(L10n.tr("settings.api.deepL.protocol.v2", lang: viewModel.preferences.appLanguage))
+                    Text(l10n("settings.api.deepL.protocol.v2"))
                         .tag(DeepLAPIFamily.officialV2)
-                    Text(L10n.tr("settings.api.deepL.protocol.legacy", lang: viewModel.preferences.appLanguage))
+                    Text(l10n("settings.api.deepL.protocol.legacy"))
                         .tag(DeepLAPIFamily.legacyDeepLX)
                 }
                 .labelsHidden()
@@ -126,9 +128,9 @@ struct APISettingsSection: View {
             GridRow {
                 fieldLabel("settings.api.deepL.capability")
                 Picker("", selection: $draft.deepLCustomCapability) {
-                    Text(L10n.tr("settings.api.deepL.capability.translateOnly", lang: viewModel.preferences.appLanguage))
+                    Text(l10n("settings.api.deepL.capability.translateOnly"))
                         .tag(DeepLCustomCapability.translateOnly)
-                    Text(L10n.tr("settings.api.deepL.capability.write", lang: viewModel.preferences.appLanguage))
+                    Text(l10n("settings.api.deepL.capability.write"))
                         .tag(DeepLCustomCapability.translateAndWrite)
                 }
                 .labelsHidden()
@@ -161,28 +163,15 @@ struct APISettingsSection: View {
             fieldLabel("settings.api.deepL.test")
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
-                    Button(L10n.tr("settings.api.deepL.test", lang: viewModel.preferences.appLanguage)) {
+                    Button(l10n("settings.api.deepL.test")) {
                         connectionTestState = .testing
-                        let snapshot = Preferences(
-                            translationProvider: draft.translationProvider,
-                            deepLBaseURL: draft.deepLBaseURL,
-                            deepLAPIKey: draft.deepLAPIKey,
-                            deepLAPIFamily: draft.deepLAPIFamily,
-                            deepLCustomCapability: draft.deepLCustomCapability,
-                            proxyType: draft.proxyType,
-                            proxyHost: draft.proxyHost,
-                            proxyPort: draft.proxyPort,
-                            proxyUsername: draft.proxyUsername,
-                            proxyPassword: draft.proxyPassword,
-                            noProxyTargets: draft.noProxyTargets
-                        )
                         Task {
                             do {
-                                let result = try await viewModel.testDeepLConnection(preferences: snapshot)
+                                let result = try await viewModel.testDeepLConnection(preferences: draft)
                                 let key = result.rephrasedText == nil
                                     ? "settings.api.deepL.test.success.translate"
                                     : "settings.api.deepL.test.success.write"
-                                connectionTestState = .success(L10n.tr(key, lang: viewModel.preferences.appLanguage))
+                                connectionTestState = .success(l10n(key))
                             } catch {
                                 connectionTestState = .failure(error.localizedDescription)
                             }
@@ -202,7 +191,7 @@ struct APISettingsSection: View {
                 case .failure(let message):
                     Text(message).foregroundStyle(AppColors.error).font(.caption).textSelection(.enabled)
                 case .idle, .testing:
-                    Text(L10n.tr("settings.api.deepL.test.help", lang: viewModel.preferences.appLanguage))
+                    Text(l10n("settings.api.deepL.test.help"))
                         .foregroundStyle(.secondary)
                         .font(.caption)
                 }
@@ -213,11 +202,11 @@ struct APISettingsSection: View {
     }
 
     private func providerOption(_ provider: TranslationProviderKind, key: String) -> some View {
-        Text(L10n.tr(key, lang: viewModel.preferences.appLanguage)).tag(provider)
+        Text(l10n(key)).tag(provider)
     }
 
     private func fieldLabel(_ key: String) -> some View {
-        Text(L10n.tr(key, lang: viewModel.preferences.appLanguage))
+        Text(l10n(key))
             .settingsFieldLabel()
     }
 
@@ -252,9 +241,9 @@ struct APISettingsSection: View {
             TextField(
                 "",
                 text: text,
-                prompt: Text(L10n.tr(placeholder, lang: viewModel.preferences.appLanguage))
+                prompt: Text(l10n(placeholder))
             )
-            .help(help.map { L10n.tr($0, lang: viewModel.preferences.appLanguage) } ?? "")
+            .help(help.map { l10n($0) } ?? "")
             .onChange(of: text.wrappedValue) { _, newValue in
                 text.wrappedValue = newValue.trimmingCharacters(in: .whitespaces)
                 connectionTestState = .idle
@@ -262,7 +251,7 @@ struct APISettingsSection: View {
             .overlay(validationBorder(isValid: isValid))
 
             if !isValid {
-                Text(L10n.tr(invalidKey, lang: viewModel.preferences.appLanguage))
+                Text(l10n(invalidKey))
                     .footnoteStyle()
                     .foregroundStyle(AppColors.error)
             }
@@ -297,7 +286,7 @@ struct APISettingsSection: View {
             }
 
             if !isValid {
-                Text(L10n.tr(invalidKey, lang: viewModel.preferences.appLanguage))
+                Text(l10n(invalidKey))
                     .footnoteStyle()
                     .foregroundStyle(AppColors.error)
             }

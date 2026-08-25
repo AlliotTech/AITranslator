@@ -1,22 +1,24 @@
 import SwiftUI
 
 struct GeneralSettingsSection: View {
-    @ObservedObject var draft: Preferences
+    @Binding var draft: Preferences
     let viewModel: AppViewModel
+    @Environment(\.l10n)
+    private var l10n
 
     var body: some View {
-        SettingsPage(L10n.tr("settings.general.title", lang: viewModel.preferences.appLanguage)) {
+        SettingsPage(l10n("settings.general.title")) {
             SettingsFormGrid {
                 GridRow {
                     fieldLabel("settings.general.appLanguage")
                     Picker("", selection: $draft.appLanguage) {
                         ForEach(AppLanguage.allCases) { option in
-                            Text(L10n.languageDisplayName(option, uiLang: viewModel.preferences.appLanguage)).tag(option)
+                            Text(l10n.languageDisplayName(option)).tag(option)
                         }
                     }
                     .labelsHidden()
                     .settingsFieldControl()
-                    .help(L10n.tr("settings.general.appLanguage.help", lang: viewModel.preferences.appLanguage))
+                    .help(l10n("settings.general.appLanguage.help"))
                 }
 
                 GridRow {
@@ -25,19 +27,19 @@ struct GeneralSettingsSection: View {
                         ForEach(DetectionEngine.allCases) { e in
                             switch e {
                             case .local:
-                                Text(L10n.tr("detection.local", lang: viewModel.preferences.appLanguage)).tag(e)
+                                Text(l10n("detection.local")).tag(e)
                             case .google:
-                                Text(L10n.tr("detection.google", lang: viewModel.preferences.appLanguage)).tag(e)
+                                Text(l10n("detection.google")).tag(e)
                             case .baidu:
-                                Text(L10n.tr("detection.baidu", lang: viewModel.preferences.appLanguage)).tag(e)
+                                Text(l10n("detection.baidu")).tag(e)
                             case .bing:
-                                Text(L10n.tr("detection.bing", lang: viewModel.preferences.appLanguage)).tag(e)
+                                Text(l10n("detection.bing")).tag(e)
                             }
                         }
                     }
                     .labelsHidden()
                     .settingsFieldControl()
-                    .help(L10n.tr("settings.general.detectionEngine.help", lang: viewModel.preferences.appLanguage))
+                    .help(l10n("settings.general.detectionEngine.help"))
                 }
 
                 GridRow {
@@ -49,32 +51,32 @@ struct GeneralSettingsSection: View {
                     }
                     .labelsHidden()
                     .settingsFieldControl()
-                    .help(L10n.tr("settings.general.defaultTargetLanguage.help", lang: viewModel.preferences.appLanguage))
+                    .help(l10n("settings.general.defaultTargetLanguage.help"))
                 }
 
                 GridRow {
                     fieldLabel("settings.general.historyMaxRecords")
                     Picker("", selection: $draft.historyMaxRecords) {
-                        Text(L10n.tr("settings.history.disabled", lang: viewModel.preferences.appLanguage))
+                        Text(l10n("settings.history.disabled"))
                             .tag(0)
                         Text("50").tag(50)
                         Text("100").tag(100)
                         Text("200").tag(200)
                         Text("500").tag(500)
                         Text("1000").tag(1000)
-                        Text(L10n.tr("settings.history.unlimited", lang: viewModel.preferences.appLanguage))
+                        Text(l10n("settings.history.unlimited"))
                             .tag(-1)
                     }
                     .labelsHidden()
                     .settingsFieldControl()
-                    .help(L10n.tr("settings.general.historyMaxRecords.help", lang: viewModel.preferences.appLanguage))
+                    .help(l10n("settings.general.historyMaxRecords.help"))
                 }
             }
         }
     }
 
     private func fieldLabel(_ key: String) -> some View {
-        Text(L10n.tr(key, lang: viewModel.preferences.appLanguage))
+        Text(l10n(key))
             .settingsFieldLabel()
     }
 }

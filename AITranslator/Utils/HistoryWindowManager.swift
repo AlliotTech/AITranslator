@@ -11,10 +11,8 @@ final class HistoryWindowManager {
 
     /// 显示历史记录窗口
     /// 如果窗口已存在，则将其置于前台；否则创建新窗口
-    /// - Parameters:
-    ///   - historyManager: 历史记录管理器
-    ///   - preferences: 用户偏好设置
-    func show(historyManager: HistoryManager, preferences: Preferences) {
+    /// - Parameter viewModel: 应用视图模型
+    func show(viewModel: AppViewModel) {
         // 如果窗口已存在且可见，更新层级并置于前台
         if let window = window, window.isVisible {
             // 确保窗口层级正确（可能主窗口置顶状态已改变）
@@ -25,10 +23,7 @@ final class HistoryWindowManager {
         }
 
         // 创建历史记录视图
-        let historyView = HistoryWindow(
-            historyManager: historyManager,
-            preferences: preferences
-        )
+        let historyView = HistoryWindowRoot(viewModel: viewModel)
 
         // 创建窗口
         let newWindow = NSWindow(
@@ -39,7 +34,7 @@ final class HistoryWindowManager {
         )
 
         // 设置窗口标题
-        let title = preferences.appLanguage == .zhHans ? "历史记录" : "History"
+        let title = viewModel.preferences.appLanguage == .zhHans ? "历史记录" : "History"
         newWindow.title = title
 
         // 设置最小尺寸
@@ -79,5 +74,16 @@ final class HistoryWindowManager {
     /// 检查窗口是否可见
     var isVisible: Bool {
         window?.isVisible ?? false
+    }
+}
+
+/// 历史窗口根视图：把 AppViewModel 的引用语义桥接到值类型 Preferences
+private struct HistoryWindowRoot: View {
+    @ObservedObject var viewModel: AppViewModel
+
+    var body: some View {
+        // NSHostingView 是独立视图树，不继承主窗口 Environment，需在此重新注入
+        HistoryWindow(historyManager: viewModel.historyManager, preferences: viewModel.preferences)
+            .environment(\.l10n, Localizer(language: viewModel.preferences.appLanguage))
     }
 }

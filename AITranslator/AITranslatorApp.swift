@@ -14,6 +14,7 @@ struct AITranslatorApp: App {
         WindowGroup {
             ContentView(viewModel: viewModel)
                 .environment(\.locale, locale ?? .autoupdatingCurrent)
+                .environment(\.l10n, Localizer(language: viewModel.preferences.appLanguage))
         }
         .defaultSize(width: 800, height: 560)
 
@@ -21,12 +22,15 @@ struct AITranslatorApp: App {
         Settings {
             SettingsView(viewModel: viewModel)
                 .environment(\.locale, locale ?? .autoupdatingCurrent)
+                .environment(\.l10n, Localizer(language: viewModel.preferences.appLanguage))
                 .frame(width: 660, height: 480)
         }
         .defaultSize(width: 660, height: 480)
         .windowResizability(.contentSize)
 
         .commands {
+            // Scene / .commands 层不在 View 的 Environment 作用域内，
+            // 无法读取 \.l10n，因此这里保留直接调用 L10n.tr。
             CommandMenu(L10n.tr("menu.translation", lang: viewModel.preferences.appLanguage)) {
                 Button(L10n.tr("cmd.sendStop", lang: viewModel.preferences.appLanguage)) {
                     if viewModel.isStreaming {

@@ -6,7 +6,10 @@ import UniformTypeIdentifiers
 /// 包含搜索、筛选、列表和详情面板
 struct HistoryWindow: View {
     @ObservedObject var historyManager: HistoryManager
-    @ObservedObject var preferences: Preferences
+    let preferences: Preferences
+
+    @Environment(\.l10n)
+    private var l10n
 
     @State private var searchText: String = ""
     @State private var selectedMode: AppMode? = nil
@@ -54,18 +57,18 @@ struct HistoryWindow: View {
         }
         .animation(Animations.spring, value: toastMessage)
         .alert(
-            L10n.tr("history.import.optionsTitle", lang: preferences.appLanguage),
+            l10n("history.import.optionsTitle"),
             isPresented: $showImportOptions
         ) {
-            Button(L10n.tr("history.confirm.cancel", lang: preferences.appLanguage), role: .cancel) {}
-            Button(L10n.tr("history.import.merge", lang: preferences.appLanguage)) {
+            Button(l10n("history.confirm.cancel"), role: .cancel) {}
+            Button(l10n("history.import.merge")) {
                 performImport(merge: true)
             }
-            Button(L10n.tr("history.import.replace", lang: preferences.appLanguage), role: .destructive) {
+            Button(l10n("history.import.replace"), role: .destructive) {
                 performImport(merge: false)
             }
         } message: {
-            Text(L10n.tr("history.import.optionsMessage", lang: preferences.appLanguage))
+            Text(l10n("history.import.optionsMessage"))
         }
     }
 
@@ -100,7 +103,7 @@ struct HistoryWindow: View {
                     .font(.system(size: 13))  // 14 → 13
 
                 TextField(
-                    L10n.tr("history.search.placeholder", lang: preferences.appLanguage),
+                    l10n("history.search.placeholder"),
                     text: $searchText
                 )
                 .textFieldStyle(.plain)
@@ -124,10 +127,10 @@ struct HistoryWindow: View {
             HStack(spacing: 6) {  // 8 → 6
                 // 模式筛选
                 Picker("", selection: $selectedMode) {
-                    Text(L10n.tr("history.filter.all", lang: preferences.appLanguage))
+                    Text(l10n("history.filter.all"))
                         .tag(nil as AppMode?)
                     ForEach(AppMode.allCases) { mode in
-                        Text(mode.displayName).tag(mode as AppMode?)
+                        Text(l10n.modeName(mode)).tag(mode as AppMode?)
                     }
                 }
                 .pickerStyle(.segmented)
@@ -142,7 +145,7 @@ struct HistoryWindow: View {
                         .font(.system(size: 13))
                 }
                 .buttonCursor()
-                .help(L10n.tr("history.button.export", lang: preferences.appLanguage))
+                .help(l10n("history.button.export"))
                 .disabled(historyManager.records.isEmpty)
 
                 // 导入按钮
@@ -151,7 +154,7 @@ struct HistoryWindow: View {
                         .font(.system(size: 13))
                 }
                 .buttonCursor()
-                .help(L10n.tr("history.button.import", lang: preferences.appLanguage))
+                .help(l10n("history.button.import"))
 
                 // 清空按钮
                 Button(action: { showClearAllConfirm = true }) {
@@ -159,7 +162,7 @@ struct HistoryWindow: View {
                         .font(.system(size: 13))  // 14 → 13
                 }
                 .buttonCursor()
-                .help(L10n.tr("history.button.clear", lang: preferences.appLanguage))
+                .help(l10n("history.button.clear"))
                 .disabled(historyManager.records.isEmpty)
             }
         }
@@ -176,14 +179,14 @@ struct HistoryWindow: View {
                             HistoryRecordRow(record: record, preferences: preferences)
                                 .tag(record)
                                 .contextMenu {
-                                    Button(L10n.tr("history.contextMenu.copyInput", lang: preferences.appLanguage)) {
+                                    Button(l10n("history.contextMenu.copyInput")) {
                                         copyToClipboard(record.input)
                                     }
-                                    Button(L10n.tr("history.contextMenu.copyOutput", lang: preferences.appLanguage)) {
+                                    Button(l10n("history.contextMenu.copyOutput")) {
                                         copyToClipboard(record.output)
                                     }
                                     Divider()
-                                    Button(L10n.tr("history.contextMenu.delete", lang: preferences.appLanguage), role: .destructive) {
+                                    Button(l10n("history.contextMenu.delete"), role: .destructive) {
                                         historyManager.deleteRecord(id: record.id)
                                         if selectedRecord?.id == record.id {
                                             selectedRecord = nil
@@ -207,8 +210,8 @@ struct HistoryWindow: View {
                 .foregroundColor(.secondary)
 
             Text(searchText.isEmpty ?
-                L10n.tr("history.empty.noRecords", lang: preferences.appLanguage) :
-                L10n.tr("history.empty.noResults", lang: preferences.appLanguage)
+                l10n("history.empty.noRecords") :
+                l10n("history.empty.noResults")
             )
             .font(.headline)
             .foregroundColor(.secondary)
@@ -223,7 +226,7 @@ struct HistoryWindow: View {
             VStack(alignment: .leading, spacing: 12) {  // 16 → 12
                 // 元数据合并为一行（紧凑布局）
                 HStack(spacing: 8) {
-                    Label(record.mode.displayName, systemImage: modeIcon(record.mode))
+                    Label(l10n.modeName(record.mode), systemImage: modeIcon(record.mode))
                         .font(.subheadline)
                         .foregroundColor(modeColor(record.mode))
 
@@ -253,7 +256,7 @@ struct HistoryWindow: View {
 
                 // 输入
                 VStack(alignment: .leading, spacing: 6) {  // 8 → 6
-                    Text(L10n.tr("history.detail.input", lang: preferences.appLanguage))
+                    Text(l10n("history.detail.input"))
                         .font(.subheadline)
                         .fontWeight(.semibold)
 
@@ -268,7 +271,7 @@ struct HistoryWindow: View {
 
                 // 输出
                 VStack(alignment: .leading, spacing: 6) {  // 8 → 6
-                    Text(L10n.tr("history.detail.output", lang: preferences.appLanguage))
+                    Text(l10n("history.detail.output"))
                         .font(.subheadline)
                         .fontWeight(.semibold)
 
@@ -283,12 +286,12 @@ struct HistoryWindow: View {
 
                 // 操作按钮
                 HStack(spacing: 8) {  // 12 → 8
-                    Button(L10n.tr("history.detail.copyInput", lang: preferences.appLanguage)) {
+                    Button(l10n("history.detail.copyInput")) {
                         copyToClipboard(record.input)
                     }
                     .buttonCursor()
 
-                    Button(L10n.tr("history.detail.copyOutput", lang: preferences.appLanguage)) {
+                    Button(l10n("history.detail.copyOutput")) {
                         copyToClipboard(record.output)
                     }
                     .buttonCursor()
@@ -299,7 +302,7 @@ struct HistoryWindow: View {
                         showDeleteConfirm = true
                     }) {
                         Label(
-                            L10n.tr("history.detail.delete", lang: preferences.appLanguage),
+                            l10n("history.detail.delete"),
                             systemImage: "trash"
                         )
                     }
@@ -310,28 +313,28 @@ struct HistoryWindow: View {
             .padding(12)  // 16 → 12
         }
         .alert(
-            L10n.tr("history.confirm.deleteTitle", lang: preferences.appLanguage),
+            l10n("history.confirm.deleteTitle"),
             isPresented: $showDeleteConfirm
         ) {
-            Button(L10n.tr("history.confirm.cancel", lang: preferences.appLanguage), role: .cancel) {}
-            Button(L10n.tr("history.detail.delete", lang: preferences.appLanguage), role: .destructive) {
+            Button(l10n("history.confirm.cancel"), role: .cancel) {}
+            Button(l10n("history.detail.delete"), role: .destructive) {
                 historyManager.deleteRecord(id: record.id)
                 selectedRecord = nil
             }
         } message: {
-            Text(L10n.tr("history.confirm.deleteMessage", lang: preferences.appLanguage))
+            Text(l10n("history.confirm.deleteMessage"))
         }
         .alert(
-            L10n.tr("history.confirm.clearTitle", lang: preferences.appLanguage),
+            l10n("history.confirm.clearTitle"),
             isPresented: $showClearAllConfirm
         ) {
-            Button(L10n.tr("history.confirm.cancel", lang: preferences.appLanguage), role: .cancel) {}
-            Button(L10n.tr("history.button.clear", lang: preferences.appLanguage), role: .destructive) {
+            Button(l10n("history.confirm.cancel"), role: .cancel) {}
+            Button(l10n("history.button.clear"), role: .destructive) {
                 historyManager.clearAll()
                 selectedRecord = nil
             }
         } message: {
-            Text(L10n.tr("history.confirm.clearMessage", lang: preferences.appLanguage))
+            Text(l10n("history.confirm.clearMessage"))
         }
     }
 
@@ -341,7 +344,7 @@ struct HistoryWindow: View {
                 .font(.system(size: 36))  // 48 → 36
                 .foregroundColor(.secondary)
 
-            Text(L10n.tr("history.detail.selectPrompt", lang: preferences.appLanguage))
+            Text(l10n("history.detail.selectPrompt"))
                 .font(.subheadline)  // headline → subheadline
                 .foregroundColor(.secondary)
         }
@@ -353,7 +356,7 @@ struct HistoryWindow: View {
     /// 导出历史记录
     private func exportHistory() {
         let savePanel = NSSavePanel()
-        savePanel.title = L10n.tr("history.export.title", lang: preferences.appLanguage)
+        savePanel.title = l10n("history.export.title")
         savePanel.nameFieldStringValue = "history_\(Date().timeIntervalSince1970).json"
         savePanel.allowedContentTypes = [.json]
         savePanel.canCreateDirectories = true
@@ -363,14 +366,14 @@ struct HistoryWindow: View {
 
             do {
                 try historyManager.exportToJSON(url: url)
-                let message = String(
-                    format: L10n.tr("history.export.success", lang: preferences.appLanguage),
+                let message = l10n(
+                    "history.export.success",
                     historyManager.records.count
                 )
                 showToast(message)
             } catch {
-                let message = String(
-                    format: L10n.tr("history.export.failure", lang: preferences.appLanguage),
+                let message = l10n(
+                    "history.export.failure",
                     error.localizedDescription
                 )
                 showToast(message)
@@ -381,7 +384,7 @@ struct HistoryWindow: View {
     /// 导入历史记录（显示选项对话框）
     private func importHistory() {
         let openPanel = NSOpenPanel()
-        openPanel.title = L10n.tr("history.import.title", lang: preferences.appLanguage)
+        openPanel.title = l10n("history.import.title")
         openPanel.allowedContentTypes = [.json]
         openPanel.allowsMultipleSelection = false
         openPanel.canChooseDirectories = false
@@ -414,13 +417,13 @@ struct HistoryWindow: View {
             let message: String
             if merge {
                 let added = newCount - oldCount
-                message = String(
-                    format: L10n.tr("history.import.success.merge", lang: preferences.appLanguage),
+                message = l10n(
+                    "history.import.success.merge",
                     added
                 )
             } else {
-                message = String(
-                    format: L10n.tr("history.import.success.replace", lang: preferences.appLanguage),
+                message = l10n(
+                    "history.import.success.replace",
                     newCount
                 )
             }
@@ -429,8 +432,8 @@ struct HistoryWindow: View {
             // 清除当前选中的记录
             selectedRecord = nil
         } catch {
-            let message = String(
-                format: L10n.tr("history.import.failure", lang: preferences.appLanguage),
+            let message = l10n(
+                "history.import.failure",
                 error.localizedDescription
             )
             showToast(message)
@@ -462,9 +465,9 @@ struct HistoryWindow: View {
     private func historyProviderName(_ provider: HistoryProvider) -> String {
         switch provider {
         case .openAICompatible:
-            return L10n.tr("history.provider.openAI", lang: preferences.appLanguage)
+            return l10n("history.provider.openAI")
         case .deepLCompatible:
-            return L10n.tr("history.provider.deepL", lang: preferences.appLanguage)
+            return l10n("history.provider.deepL")
         }
     }
 
@@ -474,7 +477,7 @@ struct HistoryWindow: View {
         pb.setString(text, forType: .string)
 
         // 显示复制成功提示
-        let message = L10n.tr("history.toast.copied", lang: preferences.appLanguage)
+        let message = l10n("history.toast.copied")
         showToast(message)
     }
 
@@ -522,6 +525,8 @@ private struct HistoryToastView: View {
 struct HistoryRecordRow: View {
     let record: HistoryRecord
     let preferences: Preferences
+    @Environment(\.l10n)
+    private var l10n
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {  // 6 → 4
@@ -531,7 +536,7 @@ struct HistoryRecordRow: View {
                     .foregroundColor(modeColor)
                     .font(.caption)
 
-                Text(record.mode.displayName)
+                Text(l10n.modeName(record.mode))
                     .font(.caption)
                     .foregroundColor(.secondary)
 

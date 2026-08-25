@@ -84,6 +84,7 @@ final class AppViewModelTranslationTests: XCTestCase {
         )
         let preferences = Preferences(
             translationProvider: .deepLCustom,
+            appLanguage: .en,
             deepLBaseURL: "https://example.com",
             deepLAPIFamily: .legacyDeepLX
         )
@@ -95,7 +96,8 @@ final class AppViewModelTranslationTests: XCTestCase {
         await waitUntil { !viewModel.session.isStreaming }
 
         XCTAssertEqual(viewModel.session.output, "ONE ")
-        XCTAssertNotNil(viewModel.session.error)
+        // 服务层只回传结构化 reason，文案由 AppViewModel 按当前语言映射
+        XCTAssertEqual(viewModel.session.error, "Chunk 2/2 failed: bad request")
         XCTAssertTrue(viewModel.canRetryFromFailure)
         XCTAssertEqual(deepL.executions.map(\.text), ["first", "second"])
 

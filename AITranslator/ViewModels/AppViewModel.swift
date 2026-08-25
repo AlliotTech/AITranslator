@@ -103,7 +103,6 @@ final class AppViewModel: ObservableObject {
     private var streamTask: Task<Void, Never>?
     private let preferencesStore: PreferencesPersisting
     private var sessionCancellable: AnyCancellable?
-    private var preferencesCancellable: AnyCancellable?
     private let hotkeys: HotkeyManaging
     private let pasteDetectDebouncer: Debouncer = Debouncer(intervalMs: 350)
 
@@ -409,7 +408,6 @@ final class AppViewModel: ObservableObject {
         }
 
         bindSession()
-        bindPreferences()
         configureHotkeyCallbacks()
         applyHotkeysFromPreferences()
     }
@@ -427,17 +425,6 @@ final class AppViewModel: ObservableObject {
         sessionCancellable = session.objectWillChange.sink { [weak self] _ in
             // Forward nested session changes to the view model on next runloop turn
             // to avoid publishing during an active view update cycle.
-            DispatchQueue.main.async { [weak self] in
-                self?.objectWillChange.send()
-            }
-        }
-    }
-
-    /// 绑定 preferences 的变化，确保嵌套 ObservableObject 的变化能传播到视图
-    private func bindPreferences() {
-        preferencesCancellable = preferences.objectWillChange.sink { [weak self] _ in
-            // 转发 preferences 内部属性的变化到 AppViewModel
-            // 这样 WindowLevelAdapter 等依赖 preferences 属性的视图才能正确更新
             DispatchQueue.main.async { [weak self] in
                 self?.objectWillChange.send()
             }
@@ -761,7 +748,7 @@ final class AppViewModel: ObservableObject {
         } catch let failure as TranslationFailure {
             guard streamGeneration == generation else { return false }
             flushOutputBuffer()
-            session.error = failure.message
+            session.error = message(for: failure.reason)
             resumeToken = failure.resumeToken
             canRetryFromFailure = failure.resumeToken != nil
             Accessibility.announce(L10n.tr("failed", lang: preferences.appLanguage))
@@ -772,6 +759,25 @@ final class AppViewModel: ObservableObject {
             session.error = error.localizedDescription
             Accessibility.announce(L10n.tr("failed", lang: preferences.appLanguage))
             return false
+        }
+    }
+
+    /// 把提供方的结构化失败原因映射为当前语言的文案
+    private func message(for reason: TranslationFailureReason) -> String {
+        switch reason {
+        case .polishUnavailable:
+            return L10n.tr("error.deepL.writeUnavailable", lang: preferences.appLanguage)
+        case .summarizeUnavailable:
+            return L10n.tr("error.deepL.summarizeUnavailable", lang: preferences.appLanguage)
+        case let .chunkFailure(chunkNumber, total, underlying):
+            return String(
+                format: L10n.tr("error.deepL.chunkFailure", lang: preferences.appLanguage),
+                chunkNumber,
+                total,
+                underlying
+            )
+        case .underlying(let text):
+            return text
         }
     }
 
@@ -976,7 +982,7 @@ final class AppViewModel: ObservableObject {
     }
 
     func showHistoryWindow() {
-        historyWindowManager.show(historyManager: historyManager, preferences: preferences)
+        historyWindowManager.show(viewModel: self)
     }
 
     /// 重置语言覆盖状态和检测缓存（例如清空输入后）

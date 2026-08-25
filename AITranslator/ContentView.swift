@@ -11,6 +11,8 @@ struct ContentView: View {
     @State private var windowConfigured: Bool = false
     @State private var spinnerTask: Task<Void, Never>?
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+    @Environment(\.l10n)
+    private var l10n
 
     // MARK: - Computed Properties
 
@@ -22,10 +24,9 @@ struct ContentView: View {
     /// 工具栏按钮的本地化文本
     private var pinButtonTexts: (help: String, label: String) {
         let isPinned = viewModel.preferences.alwaysOnTop
-        let lang = viewModel.preferences.appLanguage
         return (
-            help: L10n.tr(isPinned ? "toolbar.pin.on" : "toolbar.pin.off", lang: lang),
-            label: L10n.tr(isPinned ? "toolbar.pin.a11y.on" : "toolbar.pin.a11y.off", lang: lang)
+            help: l10n(isPinned ? "toolbar.pin.on" : "toolbar.pin.off"),
+            label: l10n(isPinned ? "toolbar.pin.a11y.on" : "toolbar.pin.a11y.off")
         )
     }
 
@@ -94,8 +95,8 @@ struct ContentView: View {
                     Image(systemName: "clock.arrow.circlepath")
                 }
                 .buttonCursor()
-                .help(L10n.tr("toolbar.history", lang: viewModel.preferences.appLanguage))
-                .accessibilityLabel(L10n.tr("toolbar.history.a11y", lang: viewModel.preferences.appLanguage))
+                .help(l10n("toolbar.history"))
+                .accessibilityLabel(l10n("toolbar.history.a11y"))
             }
 
             ToolbarItem(placement: .primaryAction) {

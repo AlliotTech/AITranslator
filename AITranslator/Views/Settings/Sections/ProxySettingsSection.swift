@@ -1,12 +1,14 @@
 import SwiftUI
 
 struct ProxySettingsSection: View {
-    @ObservedObject var draft: Preferences
+    @Binding var draft: Preferences
     let viewModel: AppViewModel
     @Binding var proxyTestState: SettingsView.ProxyTestState
+    @Environment(\.l10n)
+    private var l10n
 
     var body: some View {
-        SettingsPage(L10n.tr("settings.proxy.title", lang: viewModel.preferences.appLanguage)) {
+        SettingsPage(l10n("settings.proxy.title")) {
             SettingsFormGrid {
                 GridRow {
                     fieldLabel("settings.proxy.type")
@@ -14,11 +16,11 @@ struct ProxySettingsSection: View {
                         ForEach(ProxyType.allCases) { t in
                             switch t {
                             case .none:
-                                Text(L10n.tr("proxy.none", lang: viewModel.preferences.appLanguage)).tag(t)
+                                Text(l10n("proxy.none")).tag(t)
                             case .http:
-                                Text(L10n.tr("proxy.http", lang: viewModel.preferences.appLanguage)).tag(t)
+                                Text(l10n("proxy.http")).tag(t)
                             case .socks5:
-                                Text(L10n.tr("proxy.socks5", lang: viewModel.preferences.appLanguage)).tag(t)
+                                Text(l10n("proxy.socks5")).tag(t)
                             }
                         }
                     }
@@ -34,7 +36,7 @@ struct ProxySettingsSection: View {
                         fieldLabel("settings.proxy.hostPort")
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 8) {
-                                TextField(L10n.tr("settings.proxy.host.placeholder", lang: viewModel.preferences.appLanguage), text: $draft.proxyHost)
+                                TextField(l10n("settings.proxy.host.placeholder"), text: $draft.proxyHost)
                                     .onChange(of: draft.proxyHost) { _, newValue in
                                         draft.proxyHost = newValue.trimmingCharacters(in: .whitespaces)
                                         proxyTestState = .idle
@@ -45,7 +47,7 @@ struct ProxySettingsSection: View {
                                             .opacity(draft.isProxyHostValid ? 0 : 1)
                                     )
                                 TextField(
-                                    L10n.tr("settings.proxy.port.placeholder", lang: viewModel.preferences.appLanguage),
+                                    l10n("settings.proxy.port.placeholder"),
                                     value: $draft.proxyPort,
                                     format: .number.grouping(.never)
                                 )
@@ -66,7 +68,7 @@ struct ProxySettingsSection: View {
                             }
 
                             if !draft.isProxyValid {
-                                Text(L10n.tr("settings.proxy.invalid", lang: viewModel.preferences.appLanguage))
+                                Text(l10n("settings.proxy.invalid"))
                                     .footnoteStyle()
                                     .foregroundStyle(AppColors.error)
                             }
@@ -77,7 +79,7 @@ struct ProxySettingsSection: View {
                     GridRow {
                         fieldLabel("settings.proxy.noProxyTargets")
                         TextField(
-                            L10n.tr("settings.proxy.noProxyTargets.placeholder", lang: viewModel.preferences.appLanguage),
+                            l10n("settings.proxy.noProxyTargets.placeholder"),
                             text: $draft.noProxyTargets,
                             prompt: Text("localhost,127.0.0.1")
                         )
@@ -89,18 +91,18 @@ struct ProxySettingsSection: View {
                                 .joined(separator: ",")
                             proxyTestState = .idle
                         }
-                        .help(L10n.tr("settings.proxy.noProxyTargets.help", lang: viewModel.preferences.appLanguage))
+                        .help(l10n("settings.proxy.noProxyTargets.help"))
                     }
 
                     GridRow {
                         fieldLabel("settings.proxy.credentials")
                         HStack(spacing: 8) {
-                            TextField(L10n.tr("settings.proxy.username.placeholder", lang: viewModel.preferences.appLanguage), text: $draft.proxyUsername)
+                            TextField(l10n("settings.proxy.username.placeholder"), text: $draft.proxyUsername)
                                 .onChange(of: draft.proxyUsername) { _, newValue in
                                     draft.proxyUsername = newValue.trimmingCharacters(in: .whitespaces)
                                     proxyTestState = .idle
                                 }
-                            SecureField(L10n.tr("settings.proxy.password.placeholder", lang: viewModel.preferences.appLanguage), text: $draft.proxyPassword)
+                            SecureField(l10n("settings.proxy.password.placeholder"), text: $draft.proxyPassword)
                                 .onChange(of: draft.proxyPassword) { _, newValue in
                                     draft.proxyPassword = newValue.trimmingCharacters(in: .whitespaces)
                                     proxyTestState = .idle
@@ -114,7 +116,7 @@ struct ProxySettingsSection: View {
                             .settingsFieldLabel()
                             .accessibilityHidden(true)
                         HStack(spacing: 8) {
-                            Button(L10n.tr("settings.proxy.test", lang: viewModel.preferences.appLanguage), action: testProxy)
+                            Button(l10n("settings.proxy.test"), action: testProxy)
                                 .buttonCursor()
                                 .disabled(!draft.isProxyValid || proxyTestState == .testing)
 
@@ -140,7 +142,7 @@ struct ProxySettingsSection: View {
     }
 
     private func fieldLabel(_ key: String) -> some View {
-        Text(L10n.tr(key, lang: viewModel.preferences.appLanguage))
+        Text(l10n(key))
             .settingsFieldLabel()
     }
 

@@ -1,15 +1,17 @@
 import SwiftUI
 
 struct HotkeysSettingsSection: View {
-    @ObservedObject var draft: Preferences
+    @Binding var draft: Preferences
     let viewModel: AppViewModel
     @Binding var sendKeyHelpPresented: Bool
     @Binding var showWindowHelpPresented: Bool
     @Binding var toggleModeHelpPresented: Bool
     @Binding var quickCopyHelpPresented: Bool
+    @Environment(\.l10n)
+    private var l10n
 
     var body: some View {
-        SettingsPage(L10n.tr("settings.hotkeys.title", lang: viewModel.preferences.appLanguage)) {
+        SettingsPage(l10n("settings.hotkeys.title")) {
             SettingsFormGrid {
                 GridRow {
                     helpLabel(
@@ -18,8 +20,8 @@ struct HotkeysSettingsSection: View {
                         isPresented: $sendKeyHelpPresented
                     )
                     Picker("", selection: $draft.sendKey) {
-                        Text(L10n.tr("settings.hotkeys.sendKey.enter", lang: viewModel.preferences.appLanguage)).tag(SendKey.enter)
-                        Text(L10n.tr("settings.hotkeys.sendKey.cmdEnter", lang: viewModel.preferences.appLanguage)).tag(SendKey.cmdEnter)
+                        Text(l10n("settings.hotkeys.sendKey.enter")).tag(SendKey.enter)
+                        Text(l10n("settings.hotkeys.sendKey.cmdEnter")).tag(SendKey.cmdEnter)
                     }
                     .labelsHidden()
                     .pickerStyle(.segmented)
@@ -33,12 +35,12 @@ struct HotkeysSettingsSection: View {
                         isPresented: $showWindowHelpPresented
                     )
                     HStack(spacing: 8) {
-                        ShortcutRecorderField(value: $draft.shortcutShowWindow, placeholder: L10n.tr("settings.hotkeys.placeholder", lang: viewModel.preferences.appLanguage))
+                        ShortcutRecorderField(value: $draft.shortcutShowWindow, placeholder: l10n("settings.hotkeys.placeholder"))
                             .frame(maxWidth: .infinity)
-                        Button(L10n.tr("common.clear", lang: viewModel.preferences.appLanguage)) { draft.shortcutShowWindow = nil }
+                        Button(l10n("common.clear")) { draft.shortcutShowWindow = nil }
                             .buttonCursor()
                             .fixedSize()
-                        Button(L10n.tr("common.restoreDefault", lang: viewModel.preferences.appLanguage)) { draft.shortcutShowWindow = HotkeyManager.Defaults.showHide }
+                        Button(l10n("common.restoreDefault")) { draft.shortcutShowWindow = HotkeyManager.Defaults.showHide }
                             .buttonCursor()
                             .fixedSize()
                     }
@@ -52,12 +54,12 @@ struct HotkeysSettingsSection: View {
                         isPresented: $toggleModeHelpPresented
                     )
                     HStack(spacing: 8) {
-                        ShortcutRecorderField(value: $draft.shortcutToggleMode, placeholder: L10n.tr("settings.hotkeys.placeholder", lang: viewModel.preferences.appLanguage))
+                        ShortcutRecorderField(value: $draft.shortcutToggleMode, placeholder: l10n("settings.hotkeys.placeholder"))
                             .frame(maxWidth: .infinity)
-                        Button(L10n.tr("common.clear", lang: viewModel.preferences.appLanguage)) { draft.shortcutToggleMode = nil }
+                        Button(l10n("common.clear")) { draft.shortcutToggleMode = nil }
                             .buttonCursor()
                             .fixedSize()
-                        Button(L10n.tr("common.restoreDefault", lang: viewModel.preferences.appLanguage)) { draft.shortcutToggleMode = HotkeyManager.Defaults.toggleMode }
+                        Button(l10n("common.restoreDefault")) { draft.shortcutToggleMode = HotkeyManager.Defaults.toggleMode }
                             .buttonCursor()
                             .fixedSize()
                     }
@@ -71,12 +73,12 @@ struct HotkeysSettingsSection: View {
                         isPresented: $quickCopyHelpPresented
                     )
                     HStack(spacing: 8) {
-                        ShortcutRecorderField(value: $draft.shortcutQuickCopy, placeholder: L10n.tr("settings.hotkeys.placeholder", lang: viewModel.preferences.appLanguage))
+                        ShortcutRecorderField(value: $draft.shortcutQuickCopy, placeholder: l10n("settings.hotkeys.placeholder"))
                             .frame(maxWidth: .infinity)
-                        Button(L10n.tr("common.clear", lang: viewModel.preferences.appLanguage)) { draft.shortcutQuickCopy = nil }
+                        Button(l10n("common.clear")) { draft.shortcutQuickCopy = nil }
                             .buttonCursor()
                             .fixedSize()
-                        Button(L10n.tr("common.restoreDefault", lang: viewModel.preferences.appLanguage)) { draft.shortcutQuickCopy = HotkeyManager.Defaults.quickCopy }
+                        Button(l10n("common.restoreDefault")) { draft.shortcutQuickCopy = HotkeyManager.Defaults.quickCopy }
                             .buttonCursor()
                             .fixedSize()
                     }
@@ -88,7 +90,7 @@ struct HotkeysSettingsSection: View {
 
     private func helpLabel(_ titleKey: String, helpKey: String, isPresented: Binding<Bool>) -> some View {
         HStack(spacing: 6) {
-            Text(L10n.tr(titleKey, lang: viewModel.preferences.appLanguage))
+            Text(l10n(titleKey))
 
             Spacer(minLength: 4)
 
@@ -98,7 +100,7 @@ struct HotkeysSettingsSection: View {
             .buttonStyle(.plain)
             .buttonCursor()
             .popover(isPresented: isPresented) {
-                Text(L10n.tr(helpKey, lang: viewModel.preferences.appLanguage))
+                Text(l10n(helpKey))
                     .bodyStyle(comfortable: false)
                     .padding(12)
                     .frame(minWidth: 220)

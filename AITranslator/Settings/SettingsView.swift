@@ -66,8 +66,10 @@ extension View {
 
 struct SettingsView: View {
     @ObservedObject var viewModel: AppViewModel
+    @Environment(\.l10n)
+    private var l10n
 
-    @StateObject private var draft = Preferences()
+    @State private var draft = Preferences()
 
     @State private var revealAPIKey: Bool = false
     @State private var revealDeepLAPIKey: Bool = false
@@ -82,77 +84,62 @@ struct SettingsView: View {
 
     enum ProxyTestState { case idle, testing, success, failure }
 
-    private var hasChanges: Bool {
-        let p = viewModel.preferences
-        return draft.translationProvider != p.translationProvider
-            || draft.baseURL != p.baseURL
-            || draft.model != p.model
-            || draft.apiKey != p.apiKey
-            || draft.deepLBaseURL != p.deepLBaseURL
-            || draft.deepLAPIKey != p.deepLAPIKey
-            || draft.deepLAPIFamily != p.deepLAPIFamily
-            || draft.deepLCustomCapability != p.deepLCustomCapability
-            || draft.appLanguage != p.appLanguage
-            || draft.detectionEngine != p.detectionEngine
-            || draft.defaultTargetLanguage != p.defaultTargetLanguage
-            || draft.proxyType != p.proxyType
-            || draft.proxyHost != p.proxyHost
-            || draft.proxyPort != p.proxyPort
-            || draft.proxyUsername != p.proxyUsername
-            || draft.proxyPassword != p.proxyPassword
-            || draft.noProxyTargets != p.noProxyTargets
-            || draft.shortcutShowWindow != p.shortcutShowWindow
-            || draft.shortcutToggleMode != p.shortcutToggleMode
-            || draft.shortcutQuickCopy != p.shortcutQuickCopy
-            || draft.sendKey != p.sendKey
-            || draft.historyMaxRecords != p.historyMaxRecords
+    /// 待保存的偏好：设置面板不管理 alwaysOnTop / splitRatio，故沿用当前运行时值
+    private var pendingPreferences: Preferences {
+        var next = draft
+        next.alwaysOnTop = viewModel.preferences.alwaysOnTop
+        next.splitRatio = viewModel.preferences.splitRatio
+        next.defaultTargetLanguage = LanguageUtils.coerceToSupported(code: draft.defaultTargetLanguage)
+        return next
     }
+
+    private var hasChanges: Bool { pendingPreferences != viewModel.preferences }
 
     private var canSave: Bool { draft.isValid && hasChanges }
 
     var body: some View {
         VStack(spacing: 0) {
             TabView {
-                GeneralSettingsSection(draft: draft, viewModel: viewModel)
-                    .tabItem { Label(L10n.tr("settings.tab.general", lang: viewModel.preferences.appLanguage), systemImage: "gearshape") }
+                GeneralSettingsSection(draft: $draft, viewModel: viewModel)
+                    .tabItem { Label(l10n("settings.tab.general"), systemImage: "gearshape") }
 
                 APISettingsSection(
-                    draft: draft,
+                    draft: $draft,
                     viewModel: viewModel,
                     revealAPIKey: $revealAPIKey,
                     revealDeepLAPIKey: $revealDeepLAPIKey,
                     connectionTestState: $apiConnectionTestState
                 )
-                    .tabItem { Label(L10n.tr("settings.tab.api", lang: viewModel.preferences.appLanguage), systemImage: "key") }
+                    .tabItem { Label(l10n("settings.tab.api"), systemImage: "key") }
 
-                ProxySettingsSection(draft: draft, viewModel: viewModel, proxyTestState: $proxyTestState)
-                    .tabItem { Label(L10n.tr("settings.tab.proxy", lang: viewModel.preferences.appLanguage), systemImage: "globe") }
+                ProxySettingsSection(draft: $draft, viewModel: viewModel, proxyTestState: $proxyTestState)
+                    .tabItem { Label(l10n("settings.tab.proxy"), systemImage: "globe") }
 
                 HotkeysSettingsSection(
-                    draft: draft,
+                    draft: $draft,
                     viewModel: viewModel,
                     sendKeyHelpPresented: $sendKeyHelpPresented,
                     showWindowHelpPresented: $showWindowHelpPresented,
                     toggleModeHelpPresented: $toggleModeHelpPresented,
                     quickCopyHelpPresented: $quickCopyHelpPresented
                 )
-                .tabItem { Label(L10n.tr("settings.tab.hotkeys", lang: viewModel.preferences.appLanguage), systemImage: "keyboard") }
+                .tabItem { Label(l10n("settings.tab.hotkeys"), systemImage: "keyboard") }
             }
 
             settingsFooter
         }
         .controlSize(.regular)
         .background(AppColors.windowBackground)
-        .alert(L10n.tr("settings.reset.confirm.title", lang: viewModel.preferences.appLanguage), isPresented: $resetConfirmPresented) {
-            Button(L10n.tr("common.cancel", lang: viewModel.preferences.appLanguage), role: .cancel) {}
+        .alert(l10n("settings.reset.confirm.title"), isPresented: $resetConfirmPresented) {
+            Button(l10n("common.cancel"), role: .cancel) {}
                 .buttonCursor()
-            Button(L10n.tr("common.reset", lang: viewModel.preferences.appLanguage), role: .destructive) {
+            Button(l10n("common.reset"), role: .destructive) {
                 // Load defaults into draft only; requires explicit Save to apply
-                draft.load(from: Preferences())
+                draft = Preferences()
             }
             .buttonCursor()
         } message: {
-            Text(L10n.tr("settings.reset.confirm.message", lang: viewModel.preferences.appLanguage))
+            Text(l10n("settings.reset.confirm.message"))
         }
         .background(
             // 设置窗口层级适配器：确保设置窗口总是显示在主窗口之上
@@ -161,7 +148,7 @@ struct SettingsView: View {
                 .allowsHitTesting(false)
         )
         .onAppear {
-            draft.load(from: viewModel.preferences)
+            draft = viewModel.preferences
         }
     }
 
@@ -170,27 +157,27 @@ struct SettingsView: View {
             Divider()
 
             HStack(spacing: 8) {
-                Button(L10n.tr("common.resetDefaults", lang: viewModel.preferences.appLanguage)) {
+                Button(l10n("common.resetDefaults")) {
                     resetConfirmPresented = true
                 }
                 .buttonCursor()
 
-                Button(L10n.tr("common.import", lang: viewModel.preferences.appLanguage)) {
+                Button(l10n("common.import")) {
                     if let imported = viewModel.importPreferencesFromJSON() {
                         // Load into draft only; user must click Save to apply
-                        draft.load(from: imported)
+                        draft = imported
                     }
                 }
                 .buttonCursor()
 
-                Button(L10n.tr("common.export", lang: viewModel.preferences.appLanguage)) {
+                Button(l10n("common.export")) {
                     viewModel.exportPreferencesToJSON()
                 }
                 .buttonCursor()
 
                 Spacer(minLength: 12)
 
-                Text(L10n.tr("common.changesNotAutoSaved", lang: viewModel.preferences.appLanguage))
+                Text(l10n("common.changesNotAutoSaved"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.trailing)
@@ -199,7 +186,7 @@ struct SettingsView: View {
 
                 Button(action: savePreferences) {
                     ZStack {
-                        Text(L10n.tr("common.save", lang: viewModel.preferences.appLanguage))
+                        Text(l10n("common.save"))
                             .opacity(saveCheckVisible ? 0 : 1)
                             .scaleEffect(saveCheckVisible ? 0.5 : 1.0)
 
@@ -222,33 +209,7 @@ struct SettingsView: View {
     }
 
     private func savePreferences() {
-        let newPrefs = Preferences(
-            translationProvider: draft.translationProvider,
-            appLanguage: draft.appLanguage,
-            baseURL: draft.baseURL,
-            model: draft.model,
-            apiKey: draft.apiKey,
-            deepLBaseURL: draft.deepLBaseURL,
-            deepLAPIKey: draft.deepLAPIKey,
-            deepLAPIFamily: draft.deepLAPIFamily,
-            deepLCustomCapability: draft.deepLCustomCapability,
-            detectionEngine: draft.detectionEngine,
-            defaultTargetLanguage: draft.defaultTargetLanguage,
-            proxyType: draft.proxyType,
-            proxyHost: draft.proxyHost,
-            proxyPort: draft.proxyPort,
-            proxyUsername: draft.proxyUsername,
-            proxyPassword: draft.proxyPassword,
-            noProxyTargets: draft.noProxyTargets,
-            alwaysOnTop: viewModel.preferences.alwaysOnTop,
-            splitRatio: viewModel.preferences.splitRatio,
-            shortcutShowWindow: draft.shortcutShowWindow,
-            shortcutToggleMode: draft.shortcutToggleMode,
-            shortcutQuickCopy: draft.shortcutQuickCopy,
-            sendKey: draft.sendKey,
-            historyMaxRecords: draft.historyMaxRecords
-        )
-        viewModel.preferences = newPrefs
+        viewModel.preferences = pendingPreferences
         viewModel.savePreferences()
         withAnimation(Animations.bouncySpring) { saveCheckVisible = true }
         Task {

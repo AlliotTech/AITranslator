@@ -131,7 +131,11 @@ struct DeepLTranslationProvider: TranslationProvider {
                     return
                 } catch {
                     continuation.finish(throwing: TranslationFailure(
-                        message: chunkFailureMessage(index: index, total: chunks.count, error: error),
+                        reason: .chunkFailure(
+                            chunkNumber: index + 1,
+                            total: chunks.count,
+                            underlying: error.localizedDescription
+                        ),
                         resumeToken: ResumeToken(
                             request: request,
                             context: context,
@@ -157,17 +161,11 @@ struct DeepLTranslationProvider: TranslationProvider {
             operation = .translate
         case .polish:
             guard preferences.deepLSupportsWrite else {
-                throw DeepLServiceError(
-                    statusCode: nil,
-                    message: L10n.tr("error.deepL.writeUnavailable", lang: preferences.appLanguage)
-                )
+                throw TranslationFailure(reason: .polishUnavailable)
             }
             operation = .rephrase
         case .summarize:
-            throw DeepLServiceError(
-                statusCode: nil,
-                message: L10n.tr("error.deepL.summarizeUnavailable", lang: preferences.appLanguage)
-            )
+            throw TranslationFailure(reason: .summarizeUnavailable)
         }
 
         return DeepLRequestContext(
@@ -186,15 +184,9 @@ struct DeepLTranslationProvider: TranslationProvider {
     // MARK: - Errors
 
     private func failure(from error: Error) -> TranslationFailure {
-        TranslationFailure(message: error.localizedDescription)
-    }
-
-    private func chunkFailureMessage(index: Int, total: Int, error: Error) -> String {
-        String(
-            format: L10n.tr("error.deepL.chunkFailure", lang: preferences.appLanguage),
-            index + 1,
-            total,
-            error.localizedDescription
-        )
+        if let failure = error as? TranslationFailure {
+            return failure
+        }
+        return TranslationFailure(reason: .underlying(error.localizedDescription))
     }
 }

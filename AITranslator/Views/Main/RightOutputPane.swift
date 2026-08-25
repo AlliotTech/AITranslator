@@ -9,11 +9,13 @@ struct RightOutputPane: View {
     @State private var lastScrollTime: Date = .distantPast
 
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+    @Environment(\.l10n)
+    private var l10n
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(L10n.tr("section.output", lang: viewModel.preferences.appLanguage))
+                Text(l10n("section.output"))
                     .headlineStyle()
                     .foregroundColor(.primary)
                 Spacer()
@@ -44,7 +46,7 @@ struct RightOutputPane: View {
                             if viewModel.session.isStreaming {
                                 HStack(spacing: 6) {
                                     BlinkingCursor()
-                                    Text(L10n.tr("streaming", lang: viewModel.preferences.appLanguage))
+                                    Text(l10n("streaming"))
                                         .bodyStyle(comfortable: false)
                                         .foregroundColor(AppColors.placeholder)
                                 }
@@ -54,7 +56,7 @@ struct RightOutputPane: View {
                                     HStack(spacing: 6) {
                                         Image(systemName: "text.bubble")
                                             .foregroundColor(AppColors.placeholder)
-                                        Text(L10n.tr("output.placeholder", lang: viewModel.preferences.appLanguage))
+                                        Text(l10n("output.placeholder"))
                                             .bodyStyle(comfortable: false)
                                             .foregroundColor(AppColors.placeholder)
                                     }
@@ -106,9 +108,9 @@ struct RightOutputPane: View {
                         .animation(Animations.bouncySpring, value: copiedFlash)
                     }
                     .buttonStyle(OverlayIconButtonStyle())
-                    .help(L10n.tr("output.copy.help", lang: viewModel.preferences.appLanguage))
-                    .accessibilityLabel(L10n.tr("output.copy.a11y", lang: viewModel.preferences.appLanguage))
-                    .accessibilityHint(L10n.tr("output.copy.hint", lang: viewModel.preferences.appLanguage))
+                    .help(l10n("output.copy.help"))
+                    .accessibilityLabel(l10n("output.copy.a11y"))
+                    .accessibilityHint(l10n("output.copy.hint"))
                     .frame(minWidth: 28, minHeight: 28)
                     .contentShape(Rectangle())
                     .padding(Metrics.innerPadding)
@@ -167,7 +169,7 @@ struct RightOutputPane: View {
         .frame(minWidth: Metrics.minPaneWidth)
         .padding(.horizontal, Metrics.outerPadding)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(L10n.tr("section.output", lang: viewModel.preferences.appLanguage))
+        .accessibilityLabel(l10n("section.output"))
         .accessibilityValue(viewModel.session.output)
     }
 }

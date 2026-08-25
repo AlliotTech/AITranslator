@@ -3,13 +3,15 @@ import SwiftUI
 struct BottomBar: View {
     @ObservedObject var viewModel: AppViewModel
     @Binding var showStreamingSpinner: Bool
+    @Environment(\.l10n)
+    private var l10n
 
     var body: some View {
         HStack(spacing: 8) {
             if viewModel.session.isStreaming,
                viewModel.translationTotalUnits > 1 {
-                Text(String(
-                    format: L10n.tr("progress.chunks", lang: viewModel.preferences.appLanguage),
+                Text(l10n(
+                    "progress.chunks",
                     viewModel.translationCompletedUnits,
                     viewModel.translationTotalUnits
                 ))
@@ -18,7 +20,7 @@ struct BottomBar: View {
             }
 
             if !viewModel.session.isStreaming && viewModel.canRetryFromFailure {
-                Button(L10n.tr("btn.retry", lang: viewModel.preferences.appLanguage)) {
+                Button(l10n("btn.retry")) {
                     viewModel.retryFromFailure()
                 }
                 .buttonCursor()
@@ -35,25 +37,25 @@ struct BottomBar: View {
 
             // 主操作按钮：发送/停止
             if viewModel.session.isStreaming {
-                Button(L10n.tr("btn.stop", lang: viewModel.preferences.appLanguage)) {
+                Button(l10n("btn.stop")) {
                     viewModel.stopStreaming()
                 }
                 .keyboardShortcut(.escape, modifiers: [])
                 .primaryProminentButton()
                 .tint(.red)
-                .help(L10n.tr("btn.stop.help", lang: viewModel.preferences.appLanguage))
-                .accessibilityLabel(L10n.tr("btn.stop.a11y", lang: viewModel.preferences.appLanguage))
-                .accessibilityHint(L10n.tr("btn.stop.hint", lang: viewModel.preferences.appLanguage))
+                .help(l10n("btn.stop.help"))
+                .accessibilityLabel(l10n("btn.stop.a11y"))
+                .accessibilityHint(l10n("btn.stop.hint"))
             } else {
-                Button(L10n.tr("btn.send", lang: viewModel.preferences.appLanguage)) {
+                Button(l10n("btn.send")) {
                     viewModel.send()
                 }
                 .keyboardShortcut(.return, modifiers: viewModel.preferences.sendKey == .enter ? [] : [.command])
                 .primaryProminentButton()
                 .disabled(viewModel.isSendDisabled)
-                .help(L10n.tr("btn.send.help", lang: viewModel.preferences.appLanguage))
-                .accessibilityLabel(L10n.tr("btn.send.a11y", lang: viewModel.preferences.appLanguage))
-                .accessibilityHint(L10n.tr("btn.send.hint", lang: viewModel.preferences.appLanguage))
+                .help(l10n("btn.send.help"))
+                .accessibilityLabel(l10n("btn.send.a11y"))
+                .accessibilityHint(l10n("btn.send.hint"))
             }
         }
         .padding(.horizontal, Metrics.outerPadding)

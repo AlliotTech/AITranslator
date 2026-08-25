@@ -21,17 +21,33 @@ enum TranslationEvent: Equatable, Sendable {
 /// 不感知其内部结构（例如 DeepL 的分块与已完成文本）。
 protocol TranslationResumeToken {}
 
+/// 提供方失败原因
+///
+/// 服务层只描述“发生了什么”，不产出界面文案；文案由 UI 层（AppViewModel）映射，
+/// 这样服务层不依赖本地化与当前界面语言。
+enum TranslationFailureReason: Equatable, Sendable {
+    /// 当前 DeepL 配置不支持润色（需要 Pro 或声明支持 Write 的 /v2 服务）
+    case polishUnavailable
+
+    /// 当前提供方不支持总结
+    case summarizeUnavailable
+
+    /// 分块任务失败：`chunkNumber` 为 1 起的块序号
+    case chunkFailure(chunkNumber: Int, total: Int, underlying: String)
+
+    /// 底层错误（网络 / 协议），描述已由底层给出
+    case underlying(String)
+}
+
 /// 提供方失败信息
 ///
 /// `resumeToken` 非空表示该次失败可以从中断处继续。
-struct TranslationFailure: LocalizedError {
-    let message: String
+struct TranslationFailure: Error {
+    let reason: TranslationFailureReason
     let resumeToken: (any TranslationResumeToken)?
 
-    init(message: String, resumeToken: (any TranslationResumeToken)? = nil) {
-        self.message = message
+    init(reason: TranslationFailureReason, resumeToken: (any TranslationResumeToken)? = nil) {
+        self.reason = reason
         self.resumeToken = resumeToken
     }
-
-    var errorDescription: String? { message }
 }

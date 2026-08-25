@@ -7,12 +7,14 @@ struct LeftInputPane: View {
 
     @Environment(\.undoManager) private var undoManager
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+    @Environment(\.l10n)
+    private var l10n
     @State private var clearButtonPressed = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(L10n.tr("section.input", lang: viewModel.preferences.appLanguage))
+                Text(l10n("section.input"))
                     .headlineStyle()
                     .foregroundColor(.primary)
                 Spacer()
@@ -23,7 +25,7 @@ struct LeftInputPane: View {
                     set: { viewModel.onInputChanged($0) }
                 ),
                 isFocused: $inputFocused,
-                placeholder: L10n.tr(viewModel.preferences.sendKey == .enter ? "input.placeholder.enter" : "input.placeholder.cmdEnter", lang: viewModel.preferences.appLanguage),
+                placeholder: l10n(viewModel.preferences.sendKey == .enter ? "input.placeholder.enter" : "input.placeholder.cmdEnter"),
                 sendOnEnter: viewModel.preferences.sendKey == .enter,
                 onSubmit: { viewModel.send() },
                 // When user pastes into input, schedule a short-delayed language detection
@@ -61,9 +63,9 @@ struct LeftInputPane: View {
                         .animation(Animations.spring, value: clearButtonPressed)
                 }
                 .buttonStyle(OverlayIconButtonStyle())
-                .help(L10n.tr("input.clear.help", lang: viewModel.preferences.appLanguage))
-                .accessibilityLabel(L10n.tr("input.clear.a11y", lang: viewModel.preferences.appLanguage))
-                .accessibilityHint(L10n.tr("input.clear.hint", lang: viewModel.preferences.appLanguage))
+                .help(l10n("input.clear.help"))
+                .accessibilityLabel(l10n("input.clear.a11y"))
+                .accessibilityHint(l10n("input.clear.hint"))
                 .frame(minWidth: 28, minHeight: 28)
                 .contentShape(Rectangle())
                 .padding(Metrics.innerPadding)
@@ -74,7 +76,7 @@ struct LeftInputPane: View {
         .frame(minWidth: Metrics.minPaneWidth)
         .padding(.horizontal, Metrics.outerPadding)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(L10n.tr("section.input", lang: viewModel.preferences.appLanguage))
+        .accessibilityLabel(l10n("section.input"))
         .accessibilityValue(viewModel.session.input)
     }
 }
