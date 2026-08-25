@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 import UniformTypeIdentifiers
 
 /// 历史记录主窗口
@@ -12,12 +12,12 @@ struct HistoryWindow: View {
     private var l10n
 
     @State private var searchText: String = ""
-    @State private var selectedMode: AppMode? = nil
-    @State private var selectedRecord: HistoryRecord? = nil
-    @State private var showDeleteConfirm: Bool = false
-    @State private var showClearAllConfirm: Bool = false
-    @State private var showImportOptions: Bool = false
-    @State private var toastMessage: String? = nil
+    @State private var selectedMode: AppMode?
+    @State private var selectedRecord: HistoryRecord?
+    @State private var showDeleteConfirm = false
+    @State private var showClearAllConfirm = false
+    @State private var showImportOptions = false
+    @State private var toastMessage: String?
 
     /// 当前过滤后的记录列表
     private var filteredRecords: [HistoryRecord] {
@@ -29,7 +29,7 @@ struct HistoryWindow: View {
 
     /// 按日期分组的记录
     private var groupedRecords: [(String, [HistoryRecord])] {
-        return historyManager.groupByDate(filteredRecords, appLanguage: preferences.appLanguage)
+        historyManager.groupByDate(filteredRecords, appLanguage: preferences.appLanguage)
     }
 
     var body: some View {
@@ -171,7 +171,7 @@ struct HistoryWindow: View {
     // MARK: - Records List
 
     private var recordsListView: some View {
-        ScrollViewReader { proxy in
+        ScrollViewReader { _ in
             List(selection: $selectedRecord) {
                 ForEach(groupedRecords, id: \.0) { groupName, records in
                     Section(header: Text(groupName).font(.headline).foregroundColor(.secondary)) {
@@ -472,9 +472,7 @@ struct HistoryWindow: View {
     }
 
     private func copyToClipboard(_ text: String) {
-        let pb = NSPasteboard.general
-        pb.clearContents()
-        pb.setString(text, forType: .string)
+        Clipboard.copy(text)
 
         // 显示复制成功提示
         let message = l10n("history.toast.copied")

@@ -1,8 +1,6 @@
+import Combine
 import Foundation
 import SwiftUI
-import AppKit
-import Combine
-import UniformTypeIdentifiers
 
 // MARK: - Supporting Types
 
@@ -10,14 +8,14 @@ import UniformTypeIdentifiers
 /// 统一管理用户手动指定语言的状态，避免使用多个分散的布尔标志
 struct LanguageOverrideState {
     /// 用户是否手动指定了源语言
-    var source: Bool = false
+    var source = false
 
     /// 用户是否手动指定了目标语言
-    var target: Bool = false
+    var target = false
 
     /// 在 Summarize 模式下用户是否手动指定了目标语言
     /// (Summarize 模式有特殊逻辑，目标语言默认跟随源语言)
-    var targetInSummarize: Bool = false
+    var targetInSummarize = false
 
     /// 重置所有覆盖状态（例如清空输入时）
     mutating func reset() {
@@ -77,20 +75,20 @@ final class AppViewModel: ObservableObject {
     @Published var preferences: Preferences
     @Published var session: SessionState
 
-    @Published var toastMessage: String? = nil
+    @Published var toastMessage: String?
     @Published var copyFeedbackToken: Int = 0
     @Published var focusInputToken: Int = 0
     @Published var outputRefreshToken: Int = 0  // 用于窗口显示时刷新输出视图
 
     // 独立的窗口置顶状态，用于确保视图能正确响应变化
-    @Published var isWindowAlwaysOnTop: Bool = false
+    @Published var isWindowAlwaysOnTop = false
 
     // 长文本模式标识（用于UI显示进度提示）
-    @Published var isInLongTextMode: Bool = false
+    @Published var isInLongTextMode = false
 
     @Published var translationCompletedUnits: Int = 0
     @Published var translationTotalUnits: Int = 0
-    @Published var canRetryFromFailure: Bool = false
+    @Published var canRetryFromFailure = false
 
     // 历史记录管理器
     @Published var historyManager: HistoryManager
@@ -104,11 +102,11 @@ final class AppViewModel: ObservableObject {
     private let preferencesStore: PreferencesPersisting
     private var sessionCancellable: AnyCancellable?
     private let hotkeys: HotkeyManaging
-    private let pasteDetectDebouncer: Debouncer = Debouncer(intervalMs: 350)
+    private let pasteDetectDebouncer = Debouncer(intervalMs: 350)
 
     // 语言检测缓存（避免重复检测相同文本）
-    private var lastDetectedText: String? = nil
-    private var lastDetectedLang: String? = nil
+    private var lastDetectedText: String?
+    private var lastDetectedLang: String?
 
     // 用户语言覆盖状态（统一管理）
     private var languageOverride = LanguageOverrideState()
@@ -119,28 +117,12 @@ final class AppViewModel: ObservableObject {
     // 模式切换时记忆的目标语言
     private var rememberedTargetLanguages = RememberedTargetLanguages()
 
-    // 流式输出批量更新机制
-    // 累积多个delta后批量更新UI，大幅降低CPU占用
-    private var outputBuffer: String = ""
-    private var bufferUpdateTask: Task<Void, Never>?
+    // 流式输出批量更新机制（缓冲、自适应节流、长文本保护）
+    private let outputBuffer = StreamingOutputBuffer()
     private var resumeToken: (any TranslationResumeToken)?
 
-    // 自适应批量更新间隔（毫秒）：根据文本长度动态调整
-    // 短文本：更新频繁（流畅）；长文本：更新稀疏甚至暂停（降低CPU）
-    private var currentBatchIntervalMs: UInt64 = 16
-
-    // 更新间隔配置
-    private let shortTextIntervalMs: UInt64 = 50    // 短文本：20fps
-    private let mediumTextIntervalMs: UInt64 = 160  // 中等文本：~6fps
-    private let longTextIntervalMs: UInt64 = 300    // 长文本：~3fps（降低卡顿但保持实时感）
-
-    // 文本长度阈值
-    private let shortTextThreshold = 500       // 500字符以下为短文本
-    private let mediumTextThreshold = 3000     // 3000字符以下为中等文本
-
-    // 超长文本保护模式（仅极端场景触发）
-    private var isLongTextMode: Bool = false
-    private let veryLongTextThreshold = 20000  // 超过此值进入"仅显示进度"模式
+    // 主窗口显示控制（隔离 NSApp / NSWindow 操作）
+    private let windowPresenter: any WindowPresenting
 
     var isStreaming: Bool { session.isStreaming }
 
@@ -341,8 +323,10 @@ final class AppViewModel: ObservableObject {
         openai: OpenAIStreamingClient,
         deepL: DeepLServicing,
         preferencesStore: PreferencesPersisting,
-        hotkeys: HotkeyManaging
+        hotkeys: HotkeyManaging,
+        windowPresenter: (any WindowPresenting)? = nil
     ) {
+        self.windowPresenter = windowPresenter ?? AppKitWindowPresenter()
         self.deepL = deepL
         self.providerResolver = DefaultTranslationProviderResolver(openAI: openai, deepL: deepL)
         self.preferencesStore = preferencesStore
@@ -407,6 +391,7 @@ final class AppViewModel: ObservableObject {
             session.mode = .translate
         }
 
+        configureOutputBuffer()
         bindSession()
         configureHotkeyCallbacks()
         applyHotkeysFromPreferences()
@@ -577,13 +562,9 @@ final class AppViewModel: ObservableObject {
         Accessibility.announce(L10n.tr("streaming.a11y", lang: preferences.appLanguage))
 
         streamTask?.cancel()
-        // 清理之前的批量更新任务
-        bufferUpdateTask?.cancel()
-        bufferUpdateTask = nil
-        outputBuffer = ""
-
-        // 重置长文本模式
-        isLongTextMode = false
+        // 清理之前的批量更新任务与缓冲，并重置长文本模式
+        outputBuffer.stop()
+        outputBuffer.reset()
         isInLongTextMode = false
         resetTranslationProgress()
 
@@ -672,7 +653,7 @@ final class AppViewModel: ObservableObject {
         session.error = nil
         session.isStreaming = true
         canRetryFromFailure = false
-        outputBuffer = ""
+        outputBuffer.discardPending()
         Accessibility.announce(L10n.tr("streaming.a11y", lang: preferences.appLanguage))
 
         streamGeneration &+= 1
@@ -698,9 +679,8 @@ final class AppViewModel: ObservableObject {
         streamTask?.cancel()
 
         // 停止批量更新任务并刷新最后的缓冲内容（包括长文本模式下的累积内容）
-        bufferUpdateTask?.cancel()
-        bufferUpdateTask = nil
-        flushOutputBuffer()
+        outputBuffer.stop()
+        outputBuffer.flushNow()
 
         session.isStreaming = false
         resetTranslationProgress()
@@ -713,7 +693,7 @@ final class AppViewModel: ObservableObject {
         generation: Int
     ) async -> Bool {
         if delivery == .incrementalStream {
-            await startBatchUpdateTask(generation: generation)
+            outputBuffer.start()
         }
 
         do {
@@ -724,11 +704,11 @@ final class AppViewModel: ObservableObject {
                     outputBuffer.append(text)
                     // 分块提供方每块到达即刷新，不参与流式批量节流
                     if delivery == .chunkedBatches {
-                        flushOutputBuffer()
+                        outputBuffer.flushNow()
                     }
 
                 case .reset(let text):
-                    outputBuffer = ""
+                    outputBuffer.discardPending()
                     session.output = text
 
                 case let .progress(completed, total):
@@ -737,7 +717,7 @@ final class AppViewModel: ObservableObject {
                 }
             }
             guard streamGeneration == generation else { return false }
-            flushOutputBuffer()
+            outputBuffer.flushNow()
             resumeToken = nil
             canRetryFromFailure = false
             return true
@@ -747,7 +727,7 @@ final class AppViewModel: ObservableObject {
             return false
         } catch let failure as TranslationFailure {
             guard streamGeneration == generation else { return false }
-            flushOutputBuffer()
+            outputBuffer.flushNow()
             session.error = message(for: failure.reason)
             resumeToken = failure.resumeToken
             canRetryFromFailure = failure.resumeToken != nil
@@ -755,7 +735,7 @@ final class AppViewModel: ObservableObject {
             return false
         } catch {
             guard streamGeneration == generation else { return false }
-            flushOutputBuffer()
+            outputBuffer.flushNow()
             session.error = error.localizedDescription
             Accessibility.announce(L10n.tr("failed", lang: preferences.appLanguage))
             return false
@@ -786,11 +766,10 @@ final class AppViewModel: ObservableObject {
         identity: TranslationProviderIdentity,
         generation: Int
     ) {
-        bufferUpdateTask?.cancel()
-        bufferUpdateTask = nil
+        outputBuffer.stop()
         guard streamGeneration == generation else { return }
 
-        flushOutputBuffer()
+        outputBuffer.flushNow()
         session.isStreaming = false
         guard completed, session.error == nil, !session.output.isEmpty else { return }
 
@@ -808,152 +787,43 @@ final class AppViewModel: ObservableObject {
 
     // MARK: - 批量更新优化
 
-    /// 启动批量更新任务
-    /// 定期将缓冲区的内容刷新到UI，避免每个token都触发UI更新
-    /// 自适应调整更新频率：文本越长，更新越稀疏
-    private func startBatchUpdateTask(generation: Int) async {
-        await MainActor.run {
-            // 如果已有任务在运行，先取消
-            self.bufferUpdateTask?.cancel()
-
-            // 初始化为短文本间隔
-            self.currentBatchIntervalMs = self.shortTextIntervalMs
-
-            self.bufferUpdateTask = Task { [weak self] in
-                while !Task.isCancelled {
-                    // 在每次循环开始时检查self
-                    guard let strongSelf = self else { break }
-
-                    // 等待指定间隔（自适应）
-                    try? await Task.sleep(nanoseconds: strongSelf.currentBatchIntervalMs * 1_000_000)
-
-                    // 检查任务是否被取消
-                    guard !Task.isCancelled else { break }
-
-                    // 在主线程执行UI更新
-                    await MainActor.run { [weak self] in
-                        guard let self = self else { return }
-                        guard self.streamGeneration == generation else { return }
-
-                        // 根据当前文本长度自适应调整更新间隔（在刷新前检查）
-                        self.adjustBatchInterval()
-
-                        // 长文本模式：停止UI更新，只累积数据
-                        // 这样可以完全避免Text视图的频繁重新渲染
-                        if !self.isLongTextMode {
-                            // 正常模式：刷新缓冲区到UI
-                            self.flushOutputBuffer()
-                        }
-                        // 长文本模式下，数据仍在outputBuffer中累积，不会丢失
-                    }
-                }
-            }
+    /// 接线流式缓冲：长度探针、刷新落点、长文本模式提示
+    private func configureOutputBuffer() {
+        outputBuffer.flushedLength = { [weak self] in
+            self?.session.output.count ?? 0
         }
-    }
 
-    /// 根据当前输出文本长度自适应调整批量更新间隔
-    /// 文本越长，更新频率越低，以降低CPU占用
-    private func adjustBatchInterval() {
-        let currentLength = session.output.count
-        let bufferLength = outputBuffer.count
-        let totalLength = currentLength + bufferLength
-
-        let wasLongTextMode = isLongTextMode
-
-        if totalLength < shortTextThreshold {
-            // 短文本：20fps，保证流畅
-            currentBatchIntervalMs = shortTextIntervalMs
-            isLongTextMode = false
-        } else if totalLength < mediumTextThreshold {
-            // 中等文本：5fps，平衡性能和流畅度
-            currentBatchIntervalMs = mediumTextIntervalMs
-            isLongTextMode = false
-        } else if totalLength < veryLongTextThreshold {
-            // 长文本：1fps，大幅降低CPU占用
-            currentBatchIntervalMs = longTextIntervalMs
-            isLongTextMode = false
-        } else {
-            // 超长文本：进入"仅显示进度"模式
-            // 完全停止UI更新，只在完成时显示
-            isLongTextMode = true
+        // 将缓冲区内容刷新到 output —— 这是实际触发UI更新的地方
+        // 优化：使用预分配容量减少内存重分配
+        outputBuffer.onFlush = { [weak self] text in
+            guard let self else { return }
+            // 对于长文本，使用更高效的字符串拼接方式
+            if self.session.output.isEmpty {
+                self.session.output = text
+            } else {
+                // 预估最终容量，减少内存重分配
+                self.session.output.reserveCapacity(self.session.output.count + text.count)
+                self.session.output.append(text)
+            }
         }
 
         // 更新UI状态（用于显示进度提示）
-        if wasLongTextMode != isLongTextMode {
-            isInLongTextMode = isLongTextMode
+        outputBuffer.onLongTextModeChange = { [weak self] isLongTextMode in
+            self?.isInLongTextMode = isLongTextMode
         }
-    }
-
-    /// 将缓冲区内容刷新到output
-    /// 这是实际触发UI更新的地方
-    /// 优化：使用预分配容量减少内存重分配
-    private func flushOutputBuffer() {
-        guard !outputBuffer.isEmpty else { return }
-
-        // 对于长文本，使用更高效的字符串拼接方式
-        if session.output.isEmpty {
-            session.output = outputBuffer
-        } else {
-            // 预估最终容量，减少内存重分配
-            session.output.reserveCapacity(session.output.count + outputBuffer.count)
-            session.output.append(outputBuffer)
-        }
-
-        outputBuffer = ""
     }
 
     func copyOutputToClipboard() {
         let text = session.output.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return }
-        let pb = NSPasteboard.general
-        pb.clearContents()
-        pb.setString(text, forType: .string)
+        Clipboard.copy(text)
         copyFeedbackToken &+= 1
         showToast(L10n.tr("toast.copied", lang: preferences.appLanguage))
     }
 
     func toggleShowHideWindow() {
-        // 获取主窗口（排除辅助窗口如设置窗口、历史记录窗口）
-        let mainWindow = WindowLevelManager.shared.getMainWindow()
-
-        // 检查主窗口是否可见
-        let isMainWindowVisible = mainWindow?.isVisible == true && mainWindow?.isMiniaturized == false
-
-        if NSApp.isHidden == false && NSApp.isActive && isMainWindowVisible {
-            // 隐藏主窗口
-            // 注意：只隐藏主窗口，不影响辅助窗口（设置、历史记录等）
-            mainWindow?.orderOut(nil)
-            return
-        }
-
-        // 显示主窗口
-        if let window = mainWindow {
-            if window.isMiniaturized {
-                // 如果主窗口被最小化到 Dock，先恢复
-                if NSApp.isHidden { NSApp.unhide(nil) }
-                window.deminiaturize(nil)
-                NSApp.activate(ignoringOtherApps: true)
-            } else {
-                // 显示主窗口
-                if NSApp.isHidden { NSApp.unhide(nil) }
-                window.makeKeyAndOrderFront(nil)
-                NSApp.activate(ignoringOtherApps: true)
-            }
-        } else {
-            // 主窗口引用不存在，尝试查找第一个非辅助窗口
-            // 这是一个备用方案，正常情况下不应该执行到这里
-            if let firstWindow = NSApp.windows.first(where: { window in
-                window.canBecomeKey && !WindowLevelManager.shared.isAuxiliaryWindow(window)
-            }) {
-                if NSApp.isHidden { NSApp.unhide(nil) }
-                firstWindow.makeKeyAndOrderFront(nil)
-                NSApp.activate(ignoringOtherApps: true)
-            } else {
-                // 最后的备用方案：只激活应用
-                NSApp.unhide(nil)
-                NSApp.activate(ignoringOtherApps: true)
-            }
-        }
+        // 窗口操作交给 WindowPresenting；隐藏时无需重新聚焦输入
+        guard windowPresenter.toggleMainWindow() else { return }
 
         // Delay focus trigger to ensure window is fully activated and ready
         // This prevents the focus token from being processed before the window becomes key
@@ -1020,61 +890,20 @@ final class AppViewModel: ObservableObject {
         )
     }
 
-    // Export current preferences to a JSON file via NSSavePanel
+    // 导出当前偏好到 JSON 文件（面板与文件读写由 PreferencesFileIO 负责，文案留在此处）
     func exportPreferencesToJSON() {
-        let panel = NSSavePanel()
-        panel.canCreateDirectories = true
-        panel.nameFieldStringValue = "ai-translator-preferences.json"
-        if #available(macOS 11.0, *) {
-            panel.allowedContentTypes = [UTType.json]
-        } else {
-            panel.allowedFileTypes = ["json"]
-        }
-        panel.isExtensionHidden = false
-
-        let response = panel.runModal()
-        guard response == .OK, let url = panel.url else { return }
-
         do {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            let data = try encoder.encode(preferences)
-            if var jsonString = String(data: data, encoding: .utf8) {
-                jsonString = jsonString.replacingOccurrences(of: "\\/", with: "/")
-                if let cleanedData = jsonString.data(using: .utf8) {
-                    try cleanedData.write(to: url, options: .atomic)
-                } else {
-                    try data.write(to: url, options: .atomic)
-                }
-            } else {
-                try data.write(to: url, options: .atomic)
-            }
+            guard try PreferencesFileIO.export(preferences) else { return }
             showToast(L10n.tr("toast.export.success", lang: preferences.appLanguage))
         } catch {
             showToast(L10n.tr("toast.export.failure.prefix", lang: preferences.appLanguage) + error.localizedDescription)
         }
     }
 
-    // Import preferences from a JSON file via NSOpenPanel
-    // Returns preferences without applying; caller decides when to save/apply
+    // 从 JSON 文件导入偏好；不直接应用，由调用方决定何时保存
     func importPreferencesFromJSON() -> Preferences? {
-        let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        if #available(macOS 11.0, *) {
-            panel.allowedContentTypes = [UTType.json]
-        } else {
-            panel.allowedFileTypes = ["json"]
-        }
-
-        let response = panel.runModal()
-        guard response == .OK, let url = panel.url else { return nil }
-
         do {
-            let data = try Data(contentsOf: url)
-            let decoded = try JSONDecoder().decode(Preferences.self, from: data)
-            // Do not apply automatically; caller should set draft and save explicitly
-            return decoded
+            return try PreferencesFileIO.importPreferences()
         } catch {
             showToast(L10n.tr("toast.import.failure.prefix", lang: preferences.appLanguage) + error.localizedDescription)
             return nil
