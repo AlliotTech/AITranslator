@@ -4,7 +4,7 @@
 repos:
   # 通用文件检查
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.5.0
+    rev: v6.0.0
     hooks:
       # 确保文件以换行符结尾
       - id: end-of-file-fixer
@@ -19,7 +19,7 @@ repos:
 
 #   # SwiftLint
 #   - repo: https://github.com/realm/SwiftLint
-#     rev: 0.54.0
+#     rev: 0.65.1
 #     hooks:
 #       - id: swiftlint
 #         name: SwiftLint

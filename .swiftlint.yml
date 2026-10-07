@@ -84,6 +84,9 @@ opt_in_rules:
 disabled_rules:
   - todo
   - trailing_comma  # Allow trailing commas
+  # SwiftLint 0.65.1 对正常结尾的文件也误报 final_newline（上游 bug）；
+  # 结尾换行由 pre-commit 的 end-of-file-fixer 强制，此处禁用
+  - final_newline
 
 # Rule configurations
 line_length:
@@ -133,6 +136,9 @@ identifier_name:
     - y
     - dx
     - dy
+    - top_p
+    - frequency_penalty
+    - presence_penalty
 
 cyclomatic_complexity:
   warning: 15
