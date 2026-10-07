@@ -57,7 +57,7 @@ struct AITaskParameters {
 
     /// 获取默认参数（用于向后兼容）
     static var `default`: AITaskParameters {
-        return AITaskParameters(
+        AITaskParameters(
             temperature: 0.3,
             topP: 1.0,
             frequencyPenalty: 0.0,

@@ -5,7 +5,7 @@ struct DraggableDivider: View {
     let minPaneWidth: CGFloat
     @Binding var splitRatio: Double
     var onCommit: (() -> Void)?
-    @State private var startRatio: Double? = nil
+    @State private var startRatio: Double?
 
     var body: some View {
         Divider()

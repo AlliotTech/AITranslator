@@ -4,7 +4,8 @@ import SwiftUI
 struct TopBar: View {
     @ObservedObject var viewModel: AppViewModel
     var temporarilyBlurAndRefocus: () -> Void
-    @Environment(\.undoManager) private var undoManager
+    @Environment(\.undoManager)
+    private var undoManager
     @Environment(\.l10n)
     private var l10n
     @State private var isSwapping = false
@@ -27,7 +28,7 @@ struct TopBar: View {
                     temporarilyBlurAndRefocus()
                 }
 
-                Button(action: {
+                Button {
                     temporarilyBlurAndRefocus()
                     let prevSrc = viewModel.session.sourceLang
                     let prevTgt = viewModel.session.targetLang
@@ -47,7 +48,7 @@ struct TopBar: View {
                             isSwapping = false
                         }
                     }
-                }) {
+                } label: {
                     Label(l10n("cmd.swapLanguages"), systemImage: "arrow.left.arrow.right.circle")
                         .labelStyle(.iconOnly)
                         .rotationEffect(isSwapping ? .degrees(180) : .zero)
@@ -55,7 +56,11 @@ struct TopBar: View {
                 }
                 .secondaryBorderedButton()
                 .keyboardShortcut("s", modifiers: [.command, .shift])
-                .help(viewModel.session.mode == .polish || viewModel.session.mode == .summarize ? l10n("picker.swap.disabled") : l10n("picker.swap.help"))
+                .help(
+                    viewModel.session.mode == .polish || viewModel.session.mode == .summarize
+                        ? l10n("picker.swap.disabled")
+                        : l10n("picker.swap.help")
+                )
                 .disabled(
                     viewModel.session.mode == .polish ||
                     viewModel.session.mode == .summarize ||
@@ -86,12 +91,11 @@ struct TopBar: View {
             NativeModePicker(
                 selection: viewModel.session.mode,
                 titles: AppMode.allCases.map(modeTitle),
-                enabledSegments: AppMode.allCases.map(viewModel.isModeAvailable),
-                onSelect: { mode in
-                    temporarilyBlurAndRefocus()
-                    viewModel.setMode(mode)
-                }
-            )
+                enabledSegments: AppMode.allCases.map(viewModel.isModeAvailable)
+            ) { mode in
+                temporarilyBlurAndRefocus()
+                viewModel.setMode(mode)
+            }
             .help(l10n("picker.mode.help"))
             .accessibilityLabel(l10n("picker.mode"))
             .accessibilityHint(l10n("picker.mode.help"))
@@ -159,7 +163,8 @@ private struct NativeModePicker: NSViewRepresentable {
             self.onSelect = onSelect
         }
 
-        @objc func selectionChanged(_ sender: NSSegmentedControl) {
+        @objc
+        func selectionChanged(_ sender: NSSegmentedControl) {
             let index = sender.selectedSegment
             guard AppMode.allCases.indices.contains(index) else { return }
             onSelect(AppMode.allCases[index])

@@ -1,6 +1,6 @@
-import SwiftUI
 import AppKit
 import ObjectiveC
+import SwiftUI
 
 final class FocusAwareTextView: NSTextView {
     var onFocusChange: ((Bool) -> Void)?
@@ -24,16 +24,16 @@ struct PlaceholderTextEditor: NSViewRepresentable {
     var placeholder: String
     // Sending behavior
     var sendOnEnter: Bool = false
-    var onSubmit: (() -> Void)? = nil
+    var onSubmit: (() -> Void)?
     // Callback when user pastes into the text view
-    var onExternalPaste: (() -> Void)? = nil
+    var onExternalPaste: (() -> Void)?
     // Token-based force focus: when this changes to non-zero, force claiming first responder
     // even if another NSTextView is currently focused (used for explicit show-window focus)
     var forceFocusToken: Int = 0
     var font: NSFont = .preferredFont(forTextStyle: .body)
     var textColor: NSColor = .labelColor
     var placeholderColor: NSColor = .secondaryLabelColor
-    var textContainerInset: NSSize = NSSize(width: 8, height: 8)
+    var textContainerInset = NSSize(width: 8, height: 8)
     var lineFragmentPadding: CGFloat = 0
 
     func makeCoordinator() -> Coordinator {
@@ -218,7 +218,9 @@ extension FocusAwareTextView {
         static var onExternalPasteKey: UInt8 = 0
     }
     var shouldSendOnEnter: Bool {
+        // swiftlint:disable:next legacy_objc_type
         get { (objc_getAssociatedObject(self, &Assoc.sendOnEnterKey) as? NSNumber)?.boolValue ?? false }
+        // swiftlint:disable:next legacy_objc_type
         set { objc_setAssociatedObject(self, &Assoc.sendOnEnterKey, NSNumber(value: newValue), .OBJC_ASSOCIATION_RETAIN_NONATOMIC) }
     }
     var onSubmit: (() -> Void)? {
@@ -232,7 +234,7 @@ extension FocusAwareTextView {
 
     override func keyDown(with event: NSEvent) {
         // keyCode: 36 = Return, 76 = Keypad Enter
-        if shouldSendOnEnter, (event.keyCode == 36 || event.keyCode == 76) {
+        if shouldSendOnEnter, event.keyCode == 36 || event.keyCode == 76 {
             // If the user is composing text via an IME (has marked text),
             // do not treat Enter as submit. Let the IME handle it.
             if self.hasMarkedText() {

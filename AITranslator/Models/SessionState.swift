@@ -1,5 +1,5 @@
-import Foundation
 import Combine
+import Foundation
 
 enum AppMode: String, CaseIterable, Identifiable, Codable {
     case translate

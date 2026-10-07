@@ -25,16 +25,18 @@ protocol HistoryPersisting {
 /// 使用 JSON 文件存储在 Application Support 目录
 final class HistoryStore: HistoryPersisting {
     private let fileURL: URL
-    private nonisolated(unsafe) let fileManager = FileManager.default
+    nonisolated(unsafe) private let fileManager = FileManager.default
 
     /// 初始化历史记录存储
     /// 文件路径: ~/Library/Application Support/AITranslator/history.json
     nonisolated init() {
         // 获取 Application Support 目录
-        let appSupport = fileManager.urls(
+        guard let appSupport = fileManager.urls(
             for: .applicationSupportDirectory,
             in: .userDomainMask
-        ).first!
+        ).first else {
+            preconditionFailure("Application Support directory is unavailable")
+        }
 
         // 创建应用专属目录
         let appDir = appSupport.appendingPathComponent("AITranslator", isDirectory: true)

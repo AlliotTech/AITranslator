@@ -175,8 +175,10 @@ extension View {
 extension View {
     /// 根据语言代码自动设置文本对齐方向
     func autoTextAlignment(for languageCode: String) -> some View {
-        self.environment(\.layoutDirection,
-                        LanguageUtils.isRTLLanguage(code: languageCode) ? .rightToLeft : .leftToRight)
+        self.environment(
+            \.layoutDirection,
+            LanguageUtils.isRTLLanguage(code: languageCode) ? .rightToLeft : .leftToRight
+        )
     }
 }
 

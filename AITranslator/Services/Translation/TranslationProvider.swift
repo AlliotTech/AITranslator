@@ -9,6 +9,19 @@ struct TranslationRequest: Equatable, Sendable {
     let proxy: HTTPClient.ProxySettings?
 }
 
+extension TranslationRequest {
+    /// 从当前会话状态构建请求
+    init(session: SessionState, proxy: HTTPClient.ProxySettings?) {
+        self.init(
+            mode: session.mode,
+            input: session.input,
+            sourceLanguage: session.sourceLang,
+            targetLanguage: session.targetLang,
+            proxy: proxy
+        )
+    }
+}
+
 /// 提供方支持的模式能力
 struct TranslationCapabilities: Equatable, Sendable {
     let supportsPolish: Bool

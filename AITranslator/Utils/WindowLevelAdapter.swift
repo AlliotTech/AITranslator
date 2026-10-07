@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 /// 主窗口层级适配器
 /// 根据绑定的状态动态调整窗口层级，实现置顶功能

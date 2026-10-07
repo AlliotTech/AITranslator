@@ -1,6 +1,6 @@
-import Foundation
 import AppKit
 import Carbon
+import Foundation
 
 @MainActor
 final class HotkeyManager: HotkeyManaging {
@@ -38,31 +38,31 @@ final class HotkeyManager: HotkeyManaging {
 
     func apply(show: KeyboardShortcut?, toggle: KeyboardShortcut?, copy: KeyboardShortcut?) {
         unregisterAll()
-        if let s = show { register(shortcut: s, action: .showWindow, storeIn: &showRef) }
-        if let t = toggle {
+        if let showShortcut = show { register(shortcut: showShortcut, action: .showWindow, storeIn: &showRef) }
+        if let toggleShortcut = toggle {
             localToggleMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
                 guard let self = self else { return event }
                 // 录制快捷键时不触发
                 if self.isRecordingShortcut { return event }
 
                 if !event.isARepeat,
-                    UInt32(event.keyCode) == t.keyCode,
-                    KeyboardShortcut.carbonFlags(from: event.modifierFlags) == t.carbonModifiers {
+                    UInt32(event.keyCode) == toggleShortcut.keyCode,
+                    KeyboardShortcut.carbonFlags(from: event.modifierFlags) == toggleShortcut.carbonModifiers {
                     self.onToggleMode?()
                     return nil
                 }
                 return event
             }
         }
-        if let c = copy {
+        if let copyShortcut = copy {
             localQuickCopyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
                 guard let self = self else { return event }
                 // 录制快捷键时不触发
                 if self.isRecordingShortcut { return event }
 
                 if !event.isARepeat,
-                    UInt32(event.keyCode) == c.keyCode,
-                    KeyboardShortcut.carbonFlags(from: event.modifierFlags) == c.carbonModifiers {
+                    UInt32(event.keyCode) == copyShortcut.keyCode,
+                    KeyboardShortcut.carbonFlags(from: event.modifierFlags) == copyShortcut.carbonModifiers {
                     self.onQuickCopy?()
                     return nil
                 }
@@ -72,11 +72,11 @@ final class HotkeyManager: HotkeyManaging {
     }
 
     func unregisterAll() {
-        if let r = showRef { UnregisterEventHotKey(r) }
-        if let r = toggleRef { UnregisterEventHotKey(r) }
-        if let r = copyRef { UnregisterEventHotKey(r) }
-        if let m = localToggleMonitor { NSEvent.removeMonitor(m) }
-        if let m = localQuickCopyMonitor { NSEvent.removeMonitor(m) }
+        if let hotKeyRef = showRef { UnregisterEventHotKey(hotKeyRef) }
+        if let hotKeyRef = toggleRef { UnregisterEventHotKey(hotKeyRef) }
+        if let hotKeyRef = copyRef { UnregisterEventHotKey(hotKeyRef) }
+        if let monitor = localToggleMonitor { NSEvent.removeMonitor(monitor) }
+        if let monitor = localQuickCopyMonitor { NSEvent.removeMonitor(monitor) }
         showRef = nil
         toggleRef = nil
         copyRef = nil
@@ -87,16 +87,18 @@ final class HotkeyManager: HotkeyManaging {
     private func installHandlerIfNeeded() {
         guard eventHandler == nil else { return }
         var eventSpec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: UInt32(kEventHotKeyPressed))
-        let callback: EventHandlerUPP = { (callRef, eventRef, userData) in
+        let callback: EventHandlerUPP = { _, eventRef, _ in
             guard let eventRef = eventRef else { return OSStatus(eventNotHandledErr) }
             var hotKeyID = EventHotKeyID()
-            let status = GetEventParameter(eventRef,
+            let status = GetEventParameter(
+                eventRef,
                 EventParamName(kEventParamDirectObject),
                 EventParamType(typeEventHotKeyID),
                 nil,
                 MemoryLayout<EventHotKeyID>.size,
                 nil,
-                &hotKeyID)
+                &hotKeyID
+            )
             if status != noErr { return status }
 
             let action = HotkeyManager.Action(rawValue: hotKeyID.id)

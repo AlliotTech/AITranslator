@@ -278,7 +278,8 @@ enum L10n {
         "settings.api.deepL.test.help": "Sends fixed test text; it does not use the main-window input.",
         "settings.api.deepL.test.success.translate": "Translation endpoint test succeeded",
         "settings.api.deepL.test.success.write": "Translation and Write endpoint tests succeeded",
-        "settings.api.deepL.custom.warning": "DLX/DeepLX is a compatibility proxy, not a local DeepL model. Text may still be sent to private DeepL upstreams; stability, privacy, and terms risks depend on the selected service.",
+        "settings.api.deepL.custom.warning": "DLX/DeepLX is a compatibility proxy, not a local DeepL model. "
+            + "Text may still be sent to private DeepL upstreams; stability, privacy, and terms risks depend on the selected service.",
 
         // Proxy section
         "settings.proxy.title": "Network Proxy",
@@ -392,7 +393,8 @@ enum L10n {
         "btn.send.hint": "Start translate, polish, or summarize",
         "progress.chunks": "Chunk progress %d/%d",
         "error.deepL.chunkFailure": "Chunk %d/%d failed: %@",
-        "error.deepL.writeUnavailable": "This DeepL service does not support polishing. Use DeepL API Pro or a /v2 service declared to support Write.",
+        "error.deepL.writeUnavailable": "This DeepL service does not support polishing. "
+            + "Use DeepL API Pro or a /v2 service declared to support Write.",
         "error.deepL.summarizeUnavailable": "DeepL services do not support summarization.",
 
         // Toasts
@@ -428,7 +430,9 @@ enum L10n {
         "history.confirm.ok": "OK",
         "history.import.title": "Import History",
         "history.import.optionsTitle": "Import Options",
-        "history.import.optionsMessage": "Choose how to import history:\n• Merge: Keep existing records and add new ones\n• Replace: Delete existing records and use imported ones",
+        "history.import.optionsMessage": "Choose how to import history:\n"
+            + "• Merge: Keep existing records and add new ones\n"
+            + "• Replace: Delete existing records and use imported ones",
         "history.import.merge": "Merge",
         "history.import.replace": "Replace",
         "history.import.success.merge": "Imported: %d new records added",

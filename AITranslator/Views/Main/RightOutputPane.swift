@@ -1,5 +1,5 @@
-import SwiftUI
 import Combine
+import SwiftUI
 
 struct RightOutputPane: View {
     @ObservedObject var viewModel: AppViewModel
@@ -8,7 +8,8 @@ struct RightOutputPane: View {
     // 简化的滚动控制
     @State private var lastScrollTime: Date = .distantPast
 
-    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+    @Environment(\.accessibilityDifferentiateWithoutColor)
+    private var differentiateWithoutColor
     @Environment(\.l10n)
     private var l10n
 
@@ -95,7 +96,9 @@ struct RightOutputPane: View {
                 .frame(minHeight: Metrics.minPaneHeight)
                 .paneStyle(isFocused: false, differentiateWithoutColor: differentiateWithoutColor)
                 .overlay(alignment: .bottomTrailing) {
-                    Button(action: { viewModel.copyOutputToClipboard() }) {
+                    Button {
+                        viewModel.copyOutputToClipboard()
+                    } label: {
                         ZStack {
                             Image(systemName: "doc.on.doc")
                                 .opacity(copiedFlash ? 0 : 1)

@@ -2,74 +2,6 @@ import Combine
 import Foundation
 import SwiftUI
 
-// MARK: - Supporting Types
-
-/// 语言覆盖状态管理
-/// 统一管理用户手动指定语言的状态，避免使用多个分散的布尔标志
-struct LanguageOverrideState {
-    /// 用户是否手动指定了源语言
-    var source = false
-
-    /// 用户是否手动指定了目标语言
-    var target = false
-
-    /// 在 Summarize 模式下用户是否手动指定了目标语言
-    /// (Summarize 模式有特殊逻辑，目标语言默认跟随源语言)
-    var targetInSummarize = false
-
-    /// 重置所有覆盖状态（例如清空输入时）
-    mutating func reset() {
-        source = false
-        target = false
-        targetInSummarize = false
-    }
-
-    /// 重置源语言覆盖状态
-    mutating func resetSource() {
-        source = false
-    }
-
-    /// 重置目标语言覆盖状态
-    mutating func resetTarget() {
-        target = false
-        targetInSummarize = false
-    }
-}
-
-/// 记忆的目标语言
-/// 用于模式切换时恢复每个模式之前使用的目标语言
-struct RememberedTargetLanguages {
-    /// 翻译模式下最后使用的目标语言
-    var translate: String?
-
-    /// 总结模式下最后使用的目标语言
-    var summarize: String?
-
-    /// 获取指定模式的记忆语言
-    func get(for mode: AppMode) -> String? {
-        switch mode {
-        case .translate:
-            return translate
-        case .summarize:
-            return summarize
-        case .polish:
-            return nil  // Polish 模式目标语言总是等于源语言
-        }
-    }
-
-    /// 设置指定模式的记忆语言
-    mutating func set(_ language: String, for mode: AppMode) {
-        switch mode {
-        case .translate:
-            translate = language
-        case .summarize:
-            summarize = language
-        case .polish:
-            break  // Polish 模式不需要记忆
-        }
-    }
-}
-
 @MainActor
 final class AppViewModel: ObservableObject {
     @Published var preferences: Preferences
@@ -104,9 +36,8 @@ final class AppViewModel: ObservableObject {
     private let hotkeys: HotkeyManaging
     private let pasteDetectDebouncer = Debouncer(intervalMs: 350)
 
-    // 语言检测缓存（避免重复检测相同文本）
-    private var lastDetectedText: String?
-    private var lastDetectedLang: String?
+    // 源语言检测（含缓存，避免重复检测相同文本）
+    private let languageDetector = SourceLanguageDetector()
 
     // 用户语言覆盖状态（统一管理）
     private var languageOverride = LanguageOverrideState()
@@ -156,34 +87,12 @@ final class AppViewModel: ObservableObject {
     // MARK: - Helper Methods
 
     /// 判断是否应该自动触发翻译/润色/总结
-    /// - Parameter changeType: 语言变更类型
-    /// - Returns: 是否应该自动触发
     private func shouldAutoSend(after changeType: LanguageChangeType) -> Bool {
-        // 检查是否有输入内容
-        guard !session.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            return false
-        }
-
-        switch (session.mode, changeType) {
-        case (.translate, .source), (.translate, .target):
-            // 翻译模式：改变源语言或目标语言都自动触发
-            return true
-        case (.polish, .source):
-            // 润色模式：改变源语言自动触发（目标语言会自动跟随源语言）
-            return true
-        case (.polish, .target):
-            // 润色模式：目标语言由源语言决定，不需要单独触发
-            return false
-        case (.summarize, .source), (.summarize, .target):
-            // 总结模式：改变源语言或目标语言都自动触发
-            return true
-        }
-    }
-
-    /// 语言变更类型
-    private enum LanguageChangeType {
-        case source  // 源语言变更
-        case target  // 目标语言变更
+        AutoSendPolicy.shouldAutoSend(
+            mode: session.mode,
+            hasInput: !session.input.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+            changeType: changeType
+        )
     }
 
     func isModeAvailable(_ mode: AppMode) -> Bool {
@@ -205,120 +114,6 @@ final class AppViewModel: ObservableObject {
         resumeToken = nil
     }
 
-    private func deepLConfiguration(from preferences: Preferences) -> DeepLServiceConfiguration {
-        DeepLServiceConfiguration(
-            baseURL: preferences.resolvedDeepLBaseURL,
-            apiKey: preferences.deepLAPIKey,
-            apiFamily: preferences.resolvedDeepLAPIFamily,
-            supportsWrite: preferences.deepLSupportsWrite
-        )
-    }
-
-    private func currentRequest(proxy: HTTPClient.ProxySettings?) -> TranslationRequest {
-        TranslationRequest(
-            mode: session.mode,
-            input: session.input,
-            sourceLanguage: session.sourceLang,
-            targetLanguage: session.targetLang,
-            proxy: proxy
-        )
-    }
-
-    /// 构建代理配置（统一方法，避免重复代码）
-    private func buildProxySettings() -> HTTPClient.ProxySettings? {
-        buildProxySettings(from: preferences)
-    }
-
-    private func buildProxySettings(from preferences: Preferences) -> HTTPClient.ProxySettings? {
-        let type = preferences.proxyType
-        let host = preferences.proxyHost.trimmingCharacters(in: .whitespacesAndNewlines)
-        let port = preferences.proxyPort
-
-        if type == .none || host.isEmpty || port <= 0 { return nil }
-
-        let username = preferences.proxyUsername.trimmingCharacters(in: .whitespacesAndNewlines)
-        let password = preferences.proxyPassword
-        let bypass = preferences.noProxyTargets
-            .split(separator: ",")
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() }
-            .filter { !$0.isEmpty }
-
-        return HTTPClient.ProxySettings(
-            type: type,
-            host: host,
-            port: port,
-            username: username.isEmpty ? nil : username,
-            password: password.isEmpty ? nil : password,
-            noProxyHosts: bypass
-        )
-    }
-
-    /// 检测源语言（统一方法，包含缓存逻辑）
-    /// - Parameters:
-    ///   - text: 待检测的文本
-    ///   - proxy: 代理配置
-    /// - Returns: 标准化的语言代码
-    private func detectSourceLanguage(for text: String, proxy: HTTPClient.ProxySettings?) async -> String {
-        let engine = self.preferences.detectionEngine
-        let limited = LanguageDetector.limitedText(text, for: engine)
-
-        // 检查缓存
-        if let cachedText = self.lastDetectedText,
-           let cachedLang = self.lastDetectedLang,
-           cachedText == limited {
-            return LanguageUtils.standardize(code: cachedLang)
-        }
-
-        // 执行检测
-        let result = await LanguageDetector.detect(text: limited, engine: engine, proxy: proxy)
-        let standardized = LanguageUtils.standardize(code: result.languageCode)
-
-        // 更新缓存
-        self.lastDetectedText = limited
-        self.lastDetectedLang = standardized
-
-        return standardized
-    }
-
-    // MARK: - Target language computation for Translate mode
-
-    /// 计算翻译模式的目标语言
-    /// - Parameters:
-    ///   - source: 源语言代码
-    ///   - defaultTarget: 用户配置的默认目标语言
-    /// - Returns: 计算后的目标语言代码
-    private func computeTranslateTarget(
-        source: String,
-        defaultTarget: String
-    ) -> String {
-        let lowerSource = source.lowercased()
-        var candidate: String
-
-        // 优先使用默认目标语言（如果已配置）
-        let preferred = defaultTarget.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !preferred.isEmpty {
-            // 使用默认目标语言作为候选
-            candidate = preferred
-        } else {
-            // 如果没有配置默认目标语言，使用映射规则：en ↔ zh-CN
-            if lowerSource.hasPrefix("en") {
-                candidate = "zh-CN"
-            } else if lowerSource.hasPrefix("zh") {
-                candidate = "en"
-            } else {
-                // 其他语言默认翻译为英语
-                candidate = "en"
-            }
-        }
-
-        // 确保目标语言与源语言不同
-        if candidate.lowercased() == lowerSource {
-            // 如果目标与源相同，使用备用映射规则
-            candidate = lowerSource.hasPrefix("en") ? "zh-CN" : "en"
-        }
-        return candidate
-    }
-
     init(
         openai: OpenAIStreamingClient,
         deepL: DeepLServicing,
@@ -333,45 +128,10 @@ final class AppViewModel: ObservableObject {
         self.hotkeys = hotkeys
 
         // 先加载 preferences
-        let loadedPreferences: Preferences
-        if let loaded = preferencesStore.load() {
-            loadedPreferences = loaded
-        } else {
-            loadedPreferences = Preferences()
-        }
+        let loadedPreferences = preferencesStore.load() ?? Preferences()
 
-        // 计算初始语言设置
-        let configuredTarget = loadedPreferences.defaultTargetLanguage.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        // 确定目标语言和源语言，确保两者不同
-        let initialSource: String
-        let initialTarget: String
-
-        if configuredTarget.isEmpty {
-            // 未配置默认目标语言，使用默认组合 en → zh-CN
-            initialSource = "en"
-            initialTarget = "zh-CN"
-        } else {
-            // 使用配置的目标语言
-            initialTarget = configuredTarget
-
-            // 根据目标语言确定合适的源语言（确保不同）
-            if configuredTarget.lowercased().hasPrefix("en") {
-                // 目标是英语，源语言使用中文
-                initialSource = "zh-CN"
-            } else if configuredTarget.lowercased().hasPrefix("zh") {
-                // 目标是中文，源语言使用英语
-                initialSource = "en"
-            } else {
-                // 其他目标语言，默认源语言使用英语
-                // 如果与目标相同，则使用中文
-                if configuredTarget.lowercased() == "en" {
-                    initialSource = "zh-CN"
-                } else {
-                    initialSource = "en"
-                }
-            }
-        }
+        // 计算初始语言设置（保证源/目标不同）
+        let (initialSource, initialTarget) = LanguageUtils.initialLanguages(defaultTarget: loadedPreferences.defaultTargetLanguage)
 
         // 初始化所有存储属性
         self.preferences = loadedPreferences
@@ -467,8 +227,7 @@ final class AppViewModel: ObservableObject {
         if newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             // 清空输入时重置所有覆盖状态和检测缓存
             languageOverride.reset()
-            lastDetectedText = nil
-            lastDetectedLang = nil
+            languageDetector.reset()
         }
     }
 
@@ -573,8 +332,8 @@ final class AppViewModel: ObservableObject {
         streamTask = Task { [weak self] in
             guard let self else { return }
 
-            // 使用统一的代理配置构建方法
-            let proxy = self.buildProxySettings()
+            // 读取代理配置
+            let proxy = self.preferences.proxySettings
 
             // 检测语言（仅在翻译模式且用户未手动指定时）
             var effectiveSource = self.session.sourceLang
@@ -583,45 +342,34 @@ final class AppViewModel: ObservableObject {
             if self.session.mode == .translate {
                 // 检测源语言（如果用户未手动指定）
                 if !self.languageOverride.source {
-                    effectiveSource = await self.detectSourceLanguage(
+                    effectiveSource = await self.languageDetector.detect(
                         for: self.session.input,
+                        engine: self.preferences.detectionEngine,
                         proxy: proxy
                     )
                 }
 
                 // 计算目标语言
                 let currentTargetEmpty = self.session.targetLang.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                effectiveTarget = computeTranslateTarget(
-                    source: effectiveSource,
+                effectiveTarget = LanguageUtils.translateTarget(
+                    for: effectiveSource,
                     defaultTarget: self.preferences.defaultTargetLanguage
                 )
 
                 // 应用检测结果到 session
                 await MainActor.run {
-                    guard self.streamGeneration == generation else { return }
-
-                    // 更新源语言（如果未被用户覆盖）
-                    if !self.languageOverride.source {
-                        let coercedSource = LanguageUtils.coerceToSupported(code: effectiveSource, fallback: "en")
-                        if self.session.sourceLang != coercedSource {
-                            self.session.sourceLang = coercedSource
-                        }
-                    }
-
-                    // 更新目标语言（如果未被用户覆盖，或目标为空）
-                    let shouldAutoAdjust = !self.languageOverride.target || currentTargetEmpty
-                    if shouldAutoAdjust {
-                        let coercedTarget = LanguageUtils.coerceToSupported(code: effectiveTarget, fallback: "en")
-                        if self.session.targetLang != coercedTarget {
-                            self.session.targetLang = coercedTarget
-                        }
-                    }
+                    self.applyResolvedLanguages(
+                        effectiveSource: effectiveSource,
+                        effectiveTarget: effectiveTarget,
+                        currentTargetEmpty: currentTargetEmpty,
+                        generation: generation
+                    )
                 }
             }
 
             let provider = self.providerResolver.provider(for: self.preferences)
             let completed = await self.consume(
-                provider.events(for: self.currentRequest(proxy: proxy)),
+                provider.events(for: TranslationRequest(session: self.session, proxy: proxy)),
                 delivery: provider.delivery,
                 generation: generation
             )
@@ -631,6 +379,33 @@ final class AppViewModel: ObservableObject {
                 identity: provider.identity,
                 generation: generation
             )
+        }
+    }
+
+    /// 把检测/计算出的语言应用回 session（仅应用未被用户覆盖的项）
+    private func applyResolvedLanguages(
+        effectiveSource: String,
+        effectiveTarget: String,
+        currentTargetEmpty: Bool,
+        generation: Int
+    ) {
+        guard streamGeneration == generation else { return }
+
+        // 更新源语言（如果未被用户覆盖）
+        if !languageOverride.source {
+            let coercedSource = LanguageUtils.coerceToSupported(code: effectiveSource, fallback: "en")
+            if session.sourceLang != coercedSource {
+                session.sourceLang = coercedSource
+            }
+        }
+
+        // 更新目标语言（如果未被用户覆盖，或目标为空）
+        let shouldAutoAdjust = !languageOverride.target || currentTargetEmpty
+        if shouldAutoAdjust {
+            let coercedTarget = LanguageUtils.coerceToSupported(code: effectiveTarget, fallback: "en")
+            if session.targetLang != coercedTarget {
+                session.targetLang = coercedTarget
+            }
         }
     }
 
@@ -644,7 +419,7 @@ final class AppViewModel: ObservableObject {
         }
 
         let provider = providerResolver.provider(for: preferences)
-        let request = currentRequest(proxy: buildProxySettings())
+        let request = TranslationRequest(session: session, proxy: preferences.proxySettings)
         guard let events = provider.resumeEvents(from: token, request: request) else {
             resetTranslationProgress()
             return
@@ -728,7 +503,7 @@ final class AppViewModel: ObservableObject {
         } catch let failure as TranslationFailure {
             guard streamGeneration == generation else { return false }
             outputBuffer.flushNow()
-            session.error = message(for: failure.reason)
+            session.error = failure.reason.localizedMessage(appLanguage: preferences.appLanguage)
             resumeToken = failure.resumeToken
             canRetryFromFailure = failure.resumeToken != nil
             Accessibility.announce(L10n.tr("failed", lang: preferences.appLanguage))
@@ -739,25 +514,6 @@ final class AppViewModel: ObservableObject {
             session.error = error.localizedDescription
             Accessibility.announce(L10n.tr("failed", lang: preferences.appLanguage))
             return false
-        }
-    }
-
-    /// 把提供方的结构化失败原因映射为当前语言的文案
-    private func message(for reason: TranslationFailureReason) -> String {
-        switch reason {
-        case .polishUnavailable:
-            return L10n.tr("error.deepL.writeUnavailable", lang: preferences.appLanguage)
-        case .summarizeUnavailable:
-            return L10n.tr("error.deepL.summarizeUnavailable", lang: preferences.appLanguage)
-        case let .chunkFailure(chunkNumber, total, underlying):
-            return String(
-                format: L10n.tr("error.deepL.chunkFailure", lang: preferences.appLanguage),
-                chunkNumber,
-                total,
-                underlying
-            )
-        case .underlying(let text):
-            return text
         }
     }
 
@@ -780,8 +536,7 @@ final class AppViewModel: ObservableObject {
             targetLang: session.targetLang,
             input: session.input,
             output: session.output,
-            provider: identity.historyProvider,
-            service: identity.service
+            identity: identity
         )
     }
 
@@ -848,7 +603,11 @@ final class AppViewModel: ObservableObject {
         preferences.alwaysOnTop.toggle()
         isWindowAlwaysOnTop = preferences.alwaysOnTop  // 同步更新独立状态
         savePreferences()
-        showToast(preferences.alwaysOnTop ? L10n.tr("toast.pinned", lang: preferences.appLanguage) : L10n.tr("toast.unpinned", lang: preferences.appLanguage))
+        showToast(
+            preferences.alwaysOnTop
+                ? L10n.tr("toast.pinned", lang: preferences.appLanguage)
+                : L10n.tr("toast.unpinned", lang: preferences.appLanguage)
+        )
     }
 
     func showHistoryWindow() {
@@ -858,8 +617,7 @@ final class AppViewModel: ObservableObject {
     /// 重置语言覆盖状态和检测缓存（例如清空输入后）
     func resetOverridesAfterClear() {
         languageOverride.reset()
-        lastDetectedText = nil
-        lastDetectedLang = nil
+        languageDetector.reset()
         resetTranslationProgress()
     }
 
@@ -885,8 +643,8 @@ final class AppViewModel: ObservableObject {
             throw DeepLServiceError(statusCode: nil, message: "DeepL is not selected.")
         }
         return try await deepL.testConnection(
-            configuration: deepLConfiguration(from: preferences),
-            proxy: buildProxySettings(from: preferences)
+            configuration: preferences.deepLConfiguration,
+            proxy: preferences.proxySettings
         )
     }
 
@@ -976,21 +734,25 @@ private extension AppViewModel {
         let trimmed = session.input.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
-        // 使用统一的代理配置构建方法
-        let proxy = self.buildProxySettings()
+        // 读取代理配置
+        let proxy = self.preferences.proxySettings
 
         // 检测源语言（如果用户未手动指定）
         var effectiveSource = self.session.sourceLang
         if !languageOverride.source {
-            effectiveSource = await self.detectSourceLanguage(for: trimmed, proxy: proxy)
+            effectiveSource = await self.languageDetector.detect(
+                for: trimmed,
+                engine: preferences.detectionEngine,
+                proxy: proxy
+            )
         }
 
         // 根据不同模式处理语言设置
         if session.mode == .translate {
             // 翻译模式：计算目标语言
             let currentTargetEmpty = self.session.targetLang.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            let effectiveTarget = computeTranslateTarget(
-                source: effectiveSource,
+            let effectiveTarget = LanguageUtils.translateTarget(
+                for: effectiveSource,
                 defaultTarget: self.preferences.defaultTargetLanguage
             )
 

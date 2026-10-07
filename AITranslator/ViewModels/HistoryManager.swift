@@ -1,5 +1,5 @@
-import Foundation
 import Combine
+import Foundation
 
 /// 历史记录管理器
 /// 负责历史记录的业务逻辑：增删查改、搜索筛选
@@ -34,8 +34,7 @@ final class HistoryManager: ObservableObject {
         targetLang: String,
         input: String,
         output: String,
-        provider: HistoryProvider,
-        service: String
+        identity: TranslationProviderIdentity
     ) {
         // maxRecords == 0 时不记录
         guard maxRecords != 0 else { return }
@@ -45,8 +44,8 @@ final class HistoryManager: ObservableObject {
            lastRecord.input == input,
            lastRecord.output == output,
            lastRecord.mode == mode,
-           lastRecord.provider == provider,
-           lastRecord.service == service,
+           lastRecord.provider == identity.historyProvider,
+           lastRecord.service == identity.service,
            Date().timeIntervalSince(lastRecord.timestamp) < 60 {
             return
         }
@@ -58,8 +57,8 @@ final class HistoryManager: ObservableObject {
             targetLang: targetLang,
             input: input,
             output: output,
-            provider: provider,
-            service: service
+            provider: identity.historyProvider,
+            service: identity.service
         )
 
         // 插入到最前面（最新的记录）
@@ -233,15 +232,15 @@ final class HistoryManager: ObservableObject {
         // 排序分组（按优先级）
         let order = [todayLabel, yesterdayLabel, thisWeekLabel, thisMonthLabel]
 
-        return groups.sorted { a, b in
-            if let aIdx = order.firstIndex(of: a.key),
-               let bIdx = order.firstIndex(of: b.key) {
-                return aIdx < bIdx
+        return groups.sorted { lhs, rhs in
+            if let lhsIdx = order.firstIndex(of: lhs.key),
+               let rhsIdx = order.firstIndex(of: rhs.key) {
+                return lhsIdx < rhsIdx
             }
             // 其他组按时间倒序（通过第一条记录的时间比较）
-            let aTime = a.value.first?.timestamp ?? Date.distantPast
-            let bTime = b.value.first?.timestamp ?? Date.distantPast
-            return aTime > bTime
+            let lhsTime = lhs.value.first?.timestamp ?? Date.distantPast
+            let rhsTime = rhs.value.first?.timestamp ?? Date.distantPast
+            return lhsTime > rhsTime
         }
     }
 

@@ -10,10 +10,10 @@ struct LanguageDetector {
     // MARK: - Bing Token Cache
     private static var cachedBingToken: (token: String, expiry: Date)?
     private static let bingTokenValiditySeconds: TimeInterval = 600  // 10 minutes
-    
+
     // Network timeout for all detection requests
     private static let networkTimeoutSeconds: TimeInterval = 5.0
-    
+
     // Centralized limit helper: 1000 for network engines, 200 for local
     static func limitedText(_ text: String, for engine: DetectionEngine) -> String {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -53,34 +53,34 @@ struct LanguageDetector {
         if let nlResult = detectWithNaturalLanguage(text) {
             return nlResult
         }
-        
+
         // Fallback to regex-based detection if NL fails
         return detectWithRegex(text)
     }
-    
+
     /// Use macOS NaturalLanguage framework for accurate language detection
     private static func detectWithNaturalLanguage(_ text: String) -> Result? {
         let recognizer = NLLanguageRecognizer()
         recognizer.processString(text)
-        
+
         guard let dominantLanguage = recognizer.dominantLanguage else {
             return nil
         }
-        
+
         // Get confidence score (hypothesis with maximum probability)
         let hypotheses = recognizer.languageHypotheses(withMaximum: 1)
         let confidence = hypotheses[dominantLanguage] ?? 0.0
-        
+
         // Only accept results with reasonable confidence
         guard confidence > 0.3 else {
             return nil
         }
-        
+
         // Map NLLanguage to our language codes
         let langCode = mapNLLanguageCode(dominantLanguage.rawValue)
         return .init(languageCode: langCode, confidence: confidence)
     }
-    
+
     /// Map NaturalLanguage codes to our standardized codes
     private static func mapNLLanguageCode(_ code: String) -> String {
         switch code {
@@ -105,7 +105,7 @@ struct LanguageDetector {
             return code
         }
     }
-    
+
     /// Fallback regex-based detection (original implementation)
     private static func detectWithRegex(_ text: String) -> Result? {
         let patterns: [String: String] = [
@@ -121,9 +121,9 @@ struct LanguageDetector {
         ]
 
         var scores: [String: Int] = [:]
-        for (lang, regex) in patterns {
-            if let r = try? NSRegularExpression(pattern: regex, options: []) {
-                let matches = r.numberOfMatches(in: text, options: [], range: NSRange(location: 0, length: (text as NSString).length))
+        for (lang, pattern) in patterns {
+            if let regex = try? NSRegularExpression(pattern: pattern, options: []) {
+                let matches = regex.numberOfMatches(in: text, options: [], range: NSRange(location: 0, length: text.utf16.count))
                 scores[lang] = matches
             }
         }
@@ -237,7 +237,7 @@ struct LanguageDetector {
         do {
             // Get or reuse cached token
             let token = try await getBingToken(proxy: proxy)
-            
+
             guard let url = URL(string: "https://api-edge.cognitive.microsofttranslator.com/detect?api-version=3.0") else { return nil }
             var req = URLRequest(url: url)
             req.httpMethod = "POST"
@@ -258,28 +258,28 @@ struct LanguageDetector {
         }
         return nil
     }
-    
+
     /// Get Bing authentication token with caching
     private static func getBingToken(proxy: HTTPClient.ProxySettings?) async throws -> String {
         // Check if cached token is still valid
         if let cached = cachedBingToken, cached.expiry > Date() {
             return cached.token
         }
-        
+
         // Fetch new token
         guard let tokenURL = URL(string: "https://edge.microsoft.com/translate/auth") else {
             throw NSError(domain: "LanguageDetector", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid token URL"])
         }
-        
+
         var tokenReq = URLRequest(url: tokenURL)
         tokenReq.httpMethod = "GET"
         tokenReq.timeoutInterval = networkTimeoutSeconds
-        
+
         let (tokenData, _) = try await HTTPClient.data(for: tokenReq, proxy: proxy)
         guard let token = String(data: tokenData, encoding: .utf8), !token.isEmpty else {
             throw NSError(domain: "LanguageDetector", code: -2, userInfo: [NSLocalizedDescriptionKey: "Invalid token response"])
         }
-        
+
         // Cache token with expiry time
         cachedBingToken = (token, Date().addingTimeInterval(bingTokenValiditySeconds))
         return token

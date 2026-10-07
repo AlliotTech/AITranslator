@@ -1,5 +1,5 @@
-import Foundation
 import CFNetwork
+import Foundation
 import Network
 
 struct HTTPClient {
@@ -128,8 +128,8 @@ struct HTTPClient {
         // 无代理或需要bypass时，使用共享session
         guard let proxy else { return URLSession.shared }
 
-        if let h = targetHost?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
-           shouldBypassProxy(for: h, noProxyHosts: proxy.noProxyHosts) {
+        if let normalized = targetHost?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+           shouldBypassProxy(for: normalized, noProxyHosts: proxy.noProxyHosts) {
             return URLSession.shared
         }
 
@@ -184,17 +184,17 @@ struct HTTPClient {
     }
 
     private static func shouldBypassProxy(for host: String, noProxyHosts: [String]) -> Bool {
-        let h = host.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        guard !h.isEmpty else { return false }
+        let normalized = host.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !normalized.isEmpty else { return false }
         for raw in noProxyHosts {
             let token = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
             if token.isEmpty { continue }
-            if token == h { return true }
+            if token == normalized { return true }
             if token.hasPrefix("*.") {
                 let suffix = String(token.dropFirst(1))
-                if h.hasSuffix(suffix) { return true }
+                if normalized.hasSuffix(suffix) { return true }
             } else if token.first == "." {
-                if h.hasSuffix(token) { return true }
+                if normalized.hasSuffix(token) { return true }
             }
         }
         return false
@@ -229,7 +229,7 @@ struct HTTPClient {
                 switch state {
                 case .ready:
                     complete(true)
-                case .failed(_):
+                case .failed:
                     complete(false)
                 default:
                     break

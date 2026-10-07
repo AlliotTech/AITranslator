@@ -53,7 +53,7 @@ final class WindowLevelManager {
     /// 获取主窗口应该使用的层级
     /// - Returns: 窗口层级
     func mainWindowLevel() -> NSWindow.Level {
-        return isMainWindowAlwaysOnTop ? Level.floating : Level.normal
+        isMainWindowAlwaysOnTop ? Level.floating : Level.normal
     }
 
     // MARK: - Auxiliary Window Management
@@ -89,7 +89,7 @@ final class WindowLevelManager {
         // 辅助窗口需要根据主窗口状态决定层级：
         // - 如果主窗口置顶（floating），辅助窗口需要更高层级（auxiliary）才能显示在主窗口之上
         // - 如果主窗口未置顶（normal），辅助窗口也使用普通层级（normal）即可
-        return isMainWindowAlwaysOnTop ? Level.auxiliary : Level.normal
+        isMainWindowAlwaysOnTop ? Level.auxiliary : Level.normal
     }
 
     // MARK: - Window Configuration
@@ -139,14 +139,14 @@ final class WindowLevelManager {
     /// 获取主窗口引用
     /// - Returns: 主窗口，如果不存在则返回 nil
     func getMainWindow() -> NSWindow? {
-        return mainWindow
+        mainWindow
     }
 
     /// 判断窗口是否为辅助窗口
     /// - Parameter window: 要判断的窗口
     /// - Returns: 是否为辅助窗口
     func isAuxiliaryWindow(_ window: NSWindow) -> Bool {
-        return auxiliaryWindows.contains(where: { $0.window === window })
+        auxiliaryWindows.contains { $0.window === window }
     }
 
     /// 配置辅助窗口的层级和行为

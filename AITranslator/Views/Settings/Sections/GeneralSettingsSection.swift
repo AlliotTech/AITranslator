@@ -24,16 +24,16 @@ struct GeneralSettingsSection: View {
                 GridRow {
                     fieldLabel("settings.general.detectionEngine")
                     Picker("", selection: $draft.detectionEngine) {
-                        ForEach(DetectionEngine.allCases) { e in
-                            switch e {
+                        ForEach(DetectionEngine.allCases) { engine in
+                            switch engine {
                             case .local:
-                                Text(l10n("detection.local")).tag(e)
+                                Text(l10n("detection.local")).tag(engine)
                             case .google:
-                                Text(l10n("detection.google")).tag(e)
+                                Text(l10n("detection.google")).tag(engine)
                             case .baidu:
-                                Text(l10n("detection.baidu")).tag(e)
+                                Text(l10n("detection.baidu")).tag(engine)
                             case .bing:
-                                Text(l10n("detection.bing")).tag(e)
+                                Text(l10n("detection.bing")).tag(engine)
                             }
                         }
                     }

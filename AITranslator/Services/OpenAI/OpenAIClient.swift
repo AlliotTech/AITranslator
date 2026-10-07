@@ -11,7 +11,7 @@ struct OpenAIClient: OpenAIStreamingClient {
         let stream: Bool
         let messages: [Message]
     }
-    
+
     /// 复用 JSONEncoder 和 JSONDecoder 实例，避免每次请求都创建新实例
     /// 这是一个性能优化：编码器/解码器的创建有一定开销
     private static let encoder = JSONEncoder()

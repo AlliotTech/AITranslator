@@ -1,6 +1,6 @@
-import Foundation
 import AppKit
 import Carbon
+import Foundation
 
 struct KeyboardShortcut: Codable, Equatable, Identifiable {
     let keyCode: UInt32
@@ -45,8 +45,8 @@ struct KeyboardShortcut: Codable, Equatable, Identifiable {
         case 126: return "↑"
         default:
             // Try to translate virtual keyCode to a character using TIS
-            if let s = KeyboardShortcut.keyCodeToCharacter(Int(code)), !s.isEmpty {
-                return s.uppercased()
+            if let character = KeyboardShortcut.keyCodeToCharacter(Int(code)), !character.isEmpty {
+                return character.uppercased()
             }
             return "#\(code)"
         }

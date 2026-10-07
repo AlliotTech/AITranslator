@@ -1,5 +1,5 @@
-import SwiftUI
 import Combine
+import SwiftUI
 
 /// 分块流式文本显示组件
 /// 使用增量分块避免每次流式更新都全量 split 长文本，显著降低 CPU 占用。

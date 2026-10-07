@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 // Primary action button modifier: consistent prominent style and size.
 struct PrimaryProminentButtonModifier: ViewModifier {
@@ -75,7 +75,8 @@ struct OverlayIconButtonStyle: ButtonStyle {
 
 // Button cursor modifier: 为按钮添加手型光标效果
 struct ButtonCursorModifier: ViewModifier {
-    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.isEnabled)
+    private var isEnabled
 
     func body(content: Content) -> some View {
         content

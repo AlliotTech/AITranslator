@@ -13,14 +13,14 @@ struct ProxySettingsSection: View {
                 GridRow {
                     fieldLabel("settings.proxy.type")
                     Picker("", selection: $draft.proxyType) {
-                        ForEach(ProxyType.allCases) { t in
-                            switch t {
+                        ForEach(ProxyType.allCases) { type in
+                            switch type {
                             case .none:
-                                Text(l10n("proxy.none")).tag(t)
+                                Text(l10n("proxy.none")).tag(type)
                             case .http:
-                                Text(l10n("proxy.http")).tag(t)
+                                Text(l10n("proxy.http")).tag(type)
                             case .socks5:
-                                Text(l10n("proxy.socks5")).tag(t)
+                                Text(l10n("proxy.socks5")).tag(type)
                             }
                         }
                     }
@@ -52,7 +52,7 @@ struct ProxySettingsSection: View {
                                     format: .number.grouping(.never)
                                 )
                                 .frame(width: 80)
-                                .onChange(of: draft.proxyPort) { oldValue, newValue in
+                                .onChange(of: draft.proxyPort) { _, newValue in
                                     if newValue < 1 {
                                         draft.proxyPort = 1
                                     } else if newValue > 65535 {
@@ -146,7 +146,7 @@ struct ProxySettingsSection: View {
             .settingsFieldLabel()
     }
 
-    private func testProxy() {
+    func testProxy() {
         withAnimation(.none) { proxyTestState = .testing }
         let host = draft.proxyHost.trimmingCharacters(in: .whitespacesAndNewlines)
         let port = draft.proxyPort

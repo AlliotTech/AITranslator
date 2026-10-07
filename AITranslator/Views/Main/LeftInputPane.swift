@@ -5,8 +5,10 @@ struct LeftInputPane: View {
     @Binding var inputFocused: Bool
     var forceFocusToken: Int
 
-    @Environment(\.undoManager) private var undoManager
-    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+    @Environment(\.undoManager)
+    private var undoManager
+    @Environment(\.accessibilityDifferentiateWithoutColor)
+    private var differentiateWithoutColor
     @Environment(\.l10n)
     private var l10n
     @State private var clearButtonPressed = false
@@ -38,7 +40,7 @@ struct LeftInputPane: View {
             .clipShape(RoundedRectangle(cornerRadius: Metrics.paneCornerRadius, style: .continuous))
             .paneStyle(isFocused: inputFocused, differentiateWithoutColor: differentiateWithoutColor)
             .overlay(alignment: .bottomTrailing) {
-                Button(action: {
+                Button {
                     // 触发按钮动画
                     withAnimation(Animations.spring) {
                         clearButtonPressed = true
@@ -57,7 +59,7 @@ struct LeftInputPane: View {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                         clearButtonPressed = false
                     }
-                }) {
+                } label: {
                     Image(systemName: "xmark.circle.fill")
                         .scaleEffect(clearButtonPressed ? 0.85 : 1.0)
                         .animation(Animations.spring, value: clearButtonPressed)

@@ -94,7 +94,9 @@ struct HotkeysSettingsSection: View {
 
             Spacer(minLength: 4)
 
-            Button(action: { isPresented.wrappedValue.toggle() }) {
+            Button {
+                isPresented.wrappedValue.toggle()
+            } label: {
                 Image(systemName: "questionmark.circle")
             }
             .buttonStyle(.plain)

@@ -1,6 +1,6 @@
-import SwiftUI
 import AppKit
 import Combine
+import SwiftUI
 
 /// 设置窗口层级适配器
 /// 确保设置窗口总是显示在主窗口之上，即使主窗口被置顶

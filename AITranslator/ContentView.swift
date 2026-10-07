@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct ContentView: View {
     @ObservedObject var viewModel: AppViewModel
@@ -10,7 +10,8 @@ struct ContentView: View {
     @State private var forceFocusToken: Int = 0
     @State private var windowConfigured: Bool = false
     @State private var spinnerTask: Task<Void, Never>?
-    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+    @Environment(\.accessibilityDifferentiateWithoutColor)
+    private var differentiateWithoutColor
     @Environment(\.l10n)
     private var l10n
 
@@ -33,9 +34,8 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: Metrics.outerPadding) {
             TopBar(
-                viewModel: viewModel,
-                temporarilyBlurAndRefocus: { temporarilyBlurAndRefocus() }
-            )
+                viewModel: viewModel
+            ) { temporarilyBlurAndRefocus() }
             .layoutPriority(1)  // 确保 TopBar 优先获取空间，不被压缩
 
             GeometryReader { proxy in
@@ -91,7 +91,9 @@ struct ContentView: View {
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button(action: { viewModel.showHistoryWindow() }) {
+                Button {
+                    viewModel.showHistoryWindow()
+                } label: {
                     Image(systemName: "clock.arrow.circlepath")
                 }
                 .buttonCursor()
@@ -100,7 +102,9 @@ struct ContentView: View {
             }
 
             ToolbarItem(placement: .primaryAction) {
-                Button(action: { viewModel.toggleAlwaysOnTop() }) {
+                Button {
+                    viewModel.toggleAlwaysOnTop()
+                } label: {
                     Image(systemName: viewModel.preferences.alwaysOnTop ? "pin.fill" : "pin")
                 }
                 .buttonCursor()
@@ -109,7 +113,6 @@ struct ContentView: View {
             }
         }
     }
-
 }
 
 private extension ContentView {

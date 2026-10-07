@@ -110,7 +110,9 @@ struct HistoryWindow: View {
                 .font(.system(size: 12))  // 13 → 12
 
                 if !searchText.isEmpty {
-                    Button(action: { searchText = "" }) {
+                    Button {
+                        searchText = ""
+                    } label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.secondary)
                             .font(.system(size: 13))  // 14 → 13
@@ -140,7 +142,9 @@ struct HistoryWindow: View {
                 Spacer()
 
                 // 导出按钮
-                Button(action: { exportHistory() }) {
+                Button {
+                    exportHistory()
+                } label: {
                     Image(systemName: "square.and.arrow.up")
                         .font(.system(size: 13))
                 }
@@ -149,7 +153,9 @@ struct HistoryWindow: View {
                 .disabled(historyManager.records.isEmpty)
 
                 // 导入按钮
-                Button(action: { importHistory() }) {
+                Button {
+                    importHistory()
+                } label: {
                     Image(systemName: "square.and.arrow.down")
                         .font(.system(size: 13))
                 }
@@ -157,7 +163,9 @@ struct HistoryWindow: View {
                 .help(l10n("history.button.import"))
 
                 // 清空按钮
-                Button(action: { showClearAllConfirm = true }) {
+                Button {
+                    showClearAllConfirm = true
+                } label: {
                     Image(systemName: "trash")
                         .font(.system(size: 13))  // 14 → 13
                 }
@@ -225,90 +233,24 @@ struct HistoryWindow: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {  // 16 → 12
                 // 元数据合并为一行（紧凑布局）
-                HStack(spacing: 8) {
-                    Label(l10n.modeName(record.mode), systemImage: modeIcon(record.mode))
-                        .font(.subheadline)
-                        .foregroundColor(modeColor(record.mode))
-
-                    Text("•")
-                        .foregroundColor(.secondary)
-
-                    Text("\(historyProviderName(record.provider)) · \(record.service)")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-
-                    Text("•")
-                        .foregroundColor(.secondary)
-
-                    Text("\(languageName(record.sourceLang)) → \(languageName(record.targetLang))")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-
-                    Spacer()
-
-                    let locale = Locale(identifier: preferences.appLanguage.localeIdentifier ?? "en")
-                    Text(record.formattedTimestamp(locale: locale))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
+                detailMetadata(record)
 
                 Divider()
 
-                // 输入
-                VStack(alignment: .leading, spacing: 6) {  // 8 → 6
-                    Text(l10n("history.detail.input"))
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-
-                    Text(record.input)
-                        .textSelection(.enabled)
-                        .font(.body)
-                        .padding(8)  // 12 → 8
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(AppColors.inputBackground)
-                        .cornerRadius(6)  // 8 → 6
-                }
-
-                // 输出
-                VStack(alignment: .leading, spacing: 6) {  // 8 → 6
-                    Text(l10n("history.detail.output"))
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-
-                    Text(record.output)
-                        .textSelection(.enabled)
-                        .font(.body)
-                        .padding(8)  // 12 → 8
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(AppColors.outputBackground)
-                        .cornerRadius(6)  // 8 → 6
-                }
+                // 输入 / 输出
+                detailTextSection(
+                    title: l10n("history.detail.input"),
+                    content: record.input,
+                    background: AppColors.inputBackground
+                )
+                detailTextSection(
+                    title: l10n("history.detail.output"),
+                    content: record.output,
+                    background: AppColors.outputBackground
+                )
 
                 // 操作按钮
-                HStack(spacing: 8) {  // 12 → 8
-                    Button(l10n("history.detail.copyInput")) {
-                        copyToClipboard(record.input)
-                    }
-                    .buttonCursor()
-
-                    Button(l10n("history.detail.copyOutput")) {
-                        copyToClipboard(record.output)
-                    }
-                    .buttonCursor()
-
-                    Spacer()
-
-                    Button(role: .destructive, action: {
-                        showDeleteConfirm = true
-                    }) {
-                        Label(
-                            l10n("history.detail.delete"),
-                            systemImage: "trash"
-                        )
-                    }
-                    .buttonCursor()
-                }
-                .padding(.top, 6)  // 8 → 6
+                detailActions(record)
             }
             .padding(12)  // 16 → 12
         }
@@ -335,6 +277,81 @@ struct HistoryWindow: View {
             }
         } message: {
             Text(l10n("history.confirm.clearMessage"))
+        }
+    }
+
+    /// 详情操作按钮行：复制输入/输出、删除
+    private func detailActions(_ record: HistoryRecord) -> some View {
+        HStack(spacing: 8) {
+            Button(l10n("history.detail.copyInput")) {
+                copyToClipboard(record.input)
+            }
+            .buttonCursor()
+
+            Button(l10n("history.detail.copyOutput")) {
+                copyToClipboard(record.output)
+            }
+            .buttonCursor()
+
+            Spacer()
+
+            Button(role: .destructive) {
+                showDeleteConfirm = true
+            } label: {
+                Label(
+                    l10n("history.detail.delete"),
+                    systemImage: "trash"
+                )
+            }
+            .buttonCursor()
+        }
+        .padding(.top, 6)
+    }
+
+    /// 详情元数据行：模式、提供方、语言方向、时间
+    private func detailMetadata(_ record: HistoryRecord) -> some View {
+        HStack(spacing: 8) {
+            Label(l10n.modeName(record.mode), systemImage: modeIcon(record.mode))
+                .font(.subheadline)
+                .foregroundColor(modeColor(record.mode))
+
+            Text("•")
+                .foregroundColor(.secondary)
+
+            Text("\(historyProviderName(record.provider)) · \(record.service)")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+
+            Text("•")
+                .foregroundColor(.secondary)
+
+            Text("\(languageName(record.sourceLang)) → \(languageName(record.targetLang))")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+
+            Spacer()
+
+            let locale = Locale(identifier: preferences.appLanguage.localeIdentifier ?? "en")
+            Text(record.formattedTimestamp(locale: locale))
+                .font(.caption)
+                .foregroundColor(.secondary)
+        }
+    }
+
+    /// 详情文本节：标题 + 可选中内容块
+    private func detailTextSection(title: String, content: String, background: Color) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.subheadline)
+                .fontWeight(.semibold)
+
+            Text(content)
+                .textSelection(.enabled)
+                .font(.body)
+                .padding(8)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(background)
+                .cornerRadius(6)
         }
     }
 

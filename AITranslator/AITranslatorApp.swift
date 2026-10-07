@@ -2,7 +2,7 @@ import SwiftUI
 
 @main
 struct AITranslatorApp: App {
-    @StateObject private var viewModel: AppViewModel = AppViewModel()
+    @StateObject private var viewModel = AppViewModel()
 
     var body: some Scene {
         let locale: Locale? = {

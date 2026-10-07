@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct ShortcutRecorderField: View {
     @Binding var value: KeyboardShortcut?
@@ -17,11 +17,11 @@ struct ShortcutRecorderField: View {
         var placeholder: String
 
         func makeNSView(context: Context) -> RecorderView {
-            let v = RecorderView()
-            v.updateBinding = { self.value = $0 }
-            v.placeholder = placeholder
-            v.shortcut = value
-            return v
+            let view = RecorderView()
+            view.updateBinding = { self.value = $0 }
+            view.placeholder = placeholder
+            view.shortcut = value
+            return view
         }
 
         func updateNSView(_ nsView: RecorderView, context: Context) {
@@ -67,9 +67,9 @@ struct ShortcutRecorderField: View {
                 .font: NSFont.systemFont(ofSize: 12),
                 .foregroundColor: NSColor.labelColor
             ]
-            let size = (text as NSString).size(withAttributes: attributes)
+            let size = text.size(withAttributes: attributes)
             let rect = NSRect(x: (bounds.width - size.width) / 2, y: (bounds.height - size.height) / 2, width: size.width, height: size.height)
-            (text as NSString).draw(in: rect, withAttributes: attributes)
+            text.draw(in: rect, withAttributes: attributes)
         }
 
         override func mouseDown(with event: NSEvent) {

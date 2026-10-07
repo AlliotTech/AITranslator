@@ -54,8 +54,7 @@ struct APISettingsSection: View {
         }
     }
 
-    @ViewBuilder
-    private var openAIFields: some View {
+    @ViewBuilder private var openAIFields: some View {
         GridRow {
             fieldLabel("settings.api.baseURL")
             validatedField(
@@ -92,8 +91,7 @@ struct APISettingsSection: View {
         }
     }
 
-    @ViewBuilder
-    private var deepLFields: some View {
+    @ViewBuilder private var deepLFields: some View {
         if draft.translationProvider == .deepLCustom {
             GridRow {
                 fieldLabel("settings.api.deepL.protocol")
@@ -279,7 +277,9 @@ struct APISettingsSection: View {
                 }
                 .overlay(validationBorder(isValid: isValid))
 
-                Button(action: { isRevealed.wrappedValue.toggle() }) {
+                Button {
+                    isRevealed.wrappedValue.toggle()
+                } label: {
                     Image(systemName: isRevealed.wrappedValue ? "eye.slash" : "eye")
                 }
                 .buttonCursor()

@@ -1,6 +1,6 @@
+import AppKit
 import Foundation
 import SwiftUI
-import AppKit
 
 /// 历史记录窗口管理器
 /// 负责创建、显示和管理历史记录窗口的生命周期
