@@ -21,6 +21,7 @@ final class AppViewModel: ObservableObject {
     @Published var translationCompletedUnits: Int = 0
     @Published var translationTotalUnits: Int = 0
     @Published var canRetryFromFailure = false
+    @Published var isScreenshotOCRRunning = false
 
     // 历史记录管理器
     @Published var historyManager: HistoryManager
@@ -34,6 +35,9 @@ final class AppViewModel: ObservableObject {
     private let preferencesStore: PreferencesPersisting
     private var sessionCancellable: AnyCancellable?
     private let hotkeys: HotkeyManaging
+    let ocrClient = ScreenshotOCRClient()
+    let screenshotCapturer = ScreenshotCapturer.shared
+    var ocrTask: Task<Void, Never>?
     private let pasteDetectDebouncer = Debouncer(intervalMs: 350)
 
     // 源语言检测（含缓存，避免重复检测相同文本）
@@ -802,13 +806,15 @@ private extension AppViewModel {
         hotkeys.onShowWindow = { [weak self] in self?.toggleShowHideWindow() }
         hotkeys.onToggleMode = { [weak self] in self?.toggleMode() }
         hotkeys.onQuickCopy = { [weak self] in self?.copyOutputToClipboard() }
+        hotkeys.onScreenshotOCR = { [weak self] in self?.captureScreenshotOCR() }
     }
 
     func applyHotkeysFromPreferences() {
         hotkeys.apply(
             show: preferences.shortcutShowWindow,
             toggle: preferences.shortcutToggleMode,
-            copy: preferences.shortcutQuickCopy
+            copy: preferences.shortcutQuickCopy,
+            screenshotOCR: preferences.shortcutScreenshotOCR
         )
     }
 }

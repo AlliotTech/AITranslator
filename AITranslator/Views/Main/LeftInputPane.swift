@@ -18,8 +18,21 @@ struct LeftInputPane: View {
             HStack {
                 Text(l10n("section.input"))
                     .headlineStyle()
-                    .foregroundColor(.primary)
                 Spacer()
+                if viewModel.isScreenshotOCRRunning {
+                    ProgressView()
+                        .controlSize(.small)
+                } else {
+                    Button {
+                        viewModel.captureScreenshotOCR()
+                    } label: {
+                        Image(systemName: "text.viewfinder")
+                    }
+                    .buttonStyle(.plain)
+                    .buttonCursor()
+                    .help(l10n("input.ocr.help"))
+                    .accessibilityLabel(l10n("input.ocr.a11y"))
+                }
             }
             PlaceholderTextEditor(
                 text: Binding(

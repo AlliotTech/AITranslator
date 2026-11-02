@@ -224,7 +224,24 @@ enum L10n {
 
         // History Settings (simplified)
         "settings.history.disabled": "不记录",
-        "settings.history.unlimited": "无限制"
+        "settings.history.unlimited": "无限制",
+
+        // Screenshot OCR
+        "cmd.screenshotOCR": "截图 OCR",
+        "input.ocr.help": "截图选区并识别文字，自动填入输入框（⌃⌥O 可在设置中修改）",
+        "input.ocr.a11y": "截图识别文字",
+        "settings.api.ocrModel": "OCR 模型",
+        "settings.api.ocrModel.placeholder": "例如：gpt-4o-mini（留空则使用主模型）",
+        "settings.api.ocrModel.help": "用于截图 OCR 的视觉模型；留空时使用上方主模型",
+        "settings.hotkeys.screenshotOCR": "截图 OCR 填入输入",
+        "settings.hotkeys.screenshotOCR.help": "截取屏幕选区并识别文字，结果自动填入输入框（全局）：无需切换到应用即可触发",
+        "ocr.error.permission": "需要在“系统设置 → 隐私与安全性 → 屏幕录制”中授权本应用后重试。",
+        "ocr.error.noDisplay": "未找到可截取的显示器。",
+        "ocr.error.requiresOpenAI": "截图 OCR 需要 OpenAI 兼容服务，请在设置中切换。",
+        "ocr.error.invalidConfig": "请先在设置中配置有效的接口地址与 API 密钥。",
+        "toast.ocr.done": "识别完成，已填入输入框",
+        "toast.ocr.cancelled": "已取消截图识别",
+        "toast.ocr.failure.prefix": "截图识别失败："
     ]
 
     private static let en: [String: String] = [
@@ -454,7 +471,24 @@ enum L10n {
 
         // History Settings (simplified)
         "settings.history.disabled": "Disabled",
-        "settings.history.unlimited": "Unlimited"
+        "settings.history.unlimited": "Unlimited",
+
+        // Screenshot OCR
+        "cmd.screenshotOCR": "Screenshot OCR",
+        "input.ocr.help": "Capture a screen region and recognize text into the input field (⌃⌥O, configurable in Settings)",
+        "input.ocr.a11y": "Capture and recognize text",
+        "settings.api.ocrModel": "OCR Model",
+        "settings.api.ocrModel.placeholder": "e.g. gpt-4o-mini (empty = use main model)",
+        "settings.api.ocrModel.help": "Vision model used for screenshot OCR; leave empty to use the main model",
+        "settings.hotkeys.screenshotOCR": "Screenshot OCR to Input",
+        "settings.hotkeys.screenshotOCR.help": "Capture a screen region, recognize text and fill the input field (global): works without app focus",
+        "ocr.error.permission": "Grant Screen Recording permission in System Settings → Privacy & Security → Screen Recording, then retry.",
+        "ocr.error.noDisplay": "No display available for capture.",
+        "ocr.error.requiresOpenAI": "Screenshot OCR requires an OpenAI-compatible service. Switch providers in Settings.",
+        "ocr.error.invalidConfig": "Configure a valid Base URL and API key in Settings first.",
+        "toast.ocr.done": "Recognized and filled into input",
+        "toast.ocr.cancelled": "Screenshot OCR cancelled",
+        "toast.ocr.failure.prefix": "Screenshot OCR failed: "
     ]
 
     static func tr(_ key: String, lang: AppLanguage) -> String {

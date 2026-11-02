@@ -80,6 +80,18 @@ struct APISettingsSection: View {
         }
 
         GridRow {
+            fieldLabel("settings.api.ocrModel")
+            validatedField(
+                text: $draft.ocrModel,
+                placeholder: "settings.api.ocrModel.placeholder",
+                help: "settings.api.ocrModel.help",
+                isValid: true,
+                invalidKey: ""
+            )
+            .settingsFieldControl()
+        }
+
+        GridRow {
             fieldLabel("settings.api.key")
             secureField(
                 text: $draft.apiKey,

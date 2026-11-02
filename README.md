@@ -35,6 +35,7 @@ AI Translator is a native macOS application for translation, polishing, and summ
 - **🌐 Translation**: Automatically detect source language and translate to your target language
 - **✍️ Text Polishing**: Improve clarity, conciseness, and coherence in any language
 - **📝 Summarization**: Generate concise summaries of lengthy content
+- **📸 Screenshot OCR**: Capture any screen region and recognize its text into the input field via a vision model (global hotkey ⌃⌥O by default)
 - **🔄 Provider-aware Output**: OpenAI-compatible services stream with SSE; DeepL Translate and Write return complete, non-streaming responses
 - **🧩 Long-text DeepL Requests**: Split oversized requests, show chunk progress, retain partial output, and retry from the failed chunk
 
@@ -53,6 +54,7 @@ AI Translator is a native macOS application for translation, polishing, and summ
   - Show/Hide window: default ⌘⇧W
   - Toggle mode: default ⌃⌥M (local when app is focused)
   - Quick copy output: default ⌃⌥C (local when app is focused)
+  - Screenshot OCR: default ⌃⌥O (global)
 - **📌 Always on Top**: Pin window to stay above other applications
 - **🎨 Native macOS Design**: Beautiful UI following Apple's Human Interface Guidelines
 - **♿ Accessibility**: Full VoiceOver support and keyboard navigation
@@ -316,6 +318,7 @@ AI Translator 是一款原生 macOS 应用，支持 OpenAI 兼容 API 与 DeepL 
 - **🌐 翻译**：自动检测源语言并翻译到目标语言
 - **✍️ 文本润色**：提升任何语言的文本清晰度、简洁性和连贯性
 - **📝 内容摘要**：为冗长内容生成简洁摘要
+- **📸 截图 OCR**：框选屏幕任意区域，通过视觉模型识别文字并自动填入输入框（全局快捷键默认 ⌃⌥O）
 - **🔄 按服务输出**：OpenAI 兼容服务通过 SSE 流式输出；DeepL Translate 和 Write 返回完整的非流式响应
 - **🧩 DeepL 长文本处理**：自动按请求体限制分块，显示分块进度，失败时保留部分结果并从失败块重试
 
@@ -334,6 +337,7 @@ AI Translator 是一款原生 macOS 应用，支持 OpenAI 兼容 API 与 DeepL 
   - 显示/隐藏窗口：默认 ⌘⇧W
   - 切换模式：默认 ⌃⌥M（应用在前台时生效）
   - 快速复制输出：默认 ⌃⌥C（应用在前台时生效）
+  - 截图 OCR：默认 ⌃⌥O（全局）
 - **📌 窗口置顶**：固定窗口保持在其他应用程序之上
 - **🎨 原生 macOS 设计**：遵循 Apple 人机界面指南的精美 UI
 - **♿ 无障碍访问**：完整的 VoiceOver 支持和键盘导航

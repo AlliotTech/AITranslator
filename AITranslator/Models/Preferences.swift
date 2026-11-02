@@ -56,6 +56,7 @@ struct Preferences: Codable, Equatable {
     var appLanguage: AppLanguage
     var baseURL: String
     var model: String
+    var ocrModel: String
     var apiKey: String
 
     // DeepL-compatible API
@@ -87,6 +88,7 @@ struct Preferences: Codable, Equatable {
     var shortcutShowWindow: KeyboardShortcut?
     var shortcutToggleMode: KeyboardShortcut?
     var shortcutQuickCopy: KeyboardShortcut?
+    var shortcutScreenshotOCR: KeyboardShortcut?
 
     // Send behavior
     var sendKey: SendKey
@@ -95,11 +97,11 @@ struct Preferences: Codable, Equatable {
     var historyMaxRecords: Int
 
     enum CodingKeys: CodingKey {
-        case translationProvider, appLanguage, baseURL, model, apiKey
+        case translationProvider, appLanguage, baseURL, model, ocrModel, apiKey
         case deepLBaseURL, deepLAPIKey, deepLAPIFamily, deepLCustomCapability
         case detectionEngine, defaultTargetLanguage, proxyType, proxyHost, proxyPort
         case proxyUsername, proxyPassword, noProxyTargets, alwaysOnTop, splitRatio
-        case shortcutShowWindow, shortcutToggleMode, shortcutQuickCopy, sendKey, historyMaxRecords
+        case shortcutShowWindow, shortcutToggleMode, shortcutQuickCopy, shortcutScreenshotOCR, sendKey, historyMaxRecords
     }
 
     init(
@@ -107,6 +109,7 @@ struct Preferences: Codable, Equatable {
         appLanguage: AppLanguage = .system,
         baseURL: String = "https://api.openai.com/v1/chat/completions",
         model: String = "gpt-5-chat",
+        ocrModel: String = "gpt-4o-mini",
         apiKey: String = "",
         deepLBaseURL: String = "",
         deepLAPIKey: String = "",
@@ -125,6 +128,7 @@ struct Preferences: Codable, Equatable {
         shortcutShowWindow: KeyboardShortcut? = nil,
         shortcutToggleMode: KeyboardShortcut? = nil,
         shortcutQuickCopy: KeyboardShortcut? = nil,
+        shortcutScreenshotOCR: KeyboardShortcut? = nil,
         sendKey: SendKey = .cmdEnter,
         historyMaxRecords: Int = 200
     ) {
@@ -132,6 +136,7 @@ struct Preferences: Codable, Equatable {
         self.appLanguage = appLanguage
         self.baseURL = baseURL
         self.model = model
+        self.ocrModel = ocrModel
         self.apiKey = apiKey
         self.deepLBaseURL = deepLBaseURL
         self.deepLAPIKey = deepLAPIKey
@@ -150,6 +155,7 @@ struct Preferences: Codable, Equatable {
         self.shortcutShowWindow = shortcutShowWindow
         self.shortcutToggleMode = shortcutToggleMode
         self.shortcutQuickCopy = shortcutQuickCopy
+        self.shortcutScreenshotOCR = shortcutScreenshotOCR
         self.sendKey = sendKey
         self.historyMaxRecords = historyMaxRecords
     }
@@ -160,6 +166,7 @@ struct Preferences: Codable, Equatable {
         appLanguage = try container.decodeIfPresent(AppLanguage.self, forKey: .appLanguage) ?? .system
         baseURL = try container.decodeIfPresent(String.self, forKey: .baseURL) ?? "https://api.openai.com/v1/chat/completions"
         model = try container.decodeIfPresent(String.self, forKey: .model) ?? "gpt-5-chat"
+        ocrModel = try container.decodeIfPresent(String.self, forKey: .ocrModel) ?? "gpt-4o-mini"
         apiKey = try container.decodeIfPresent(String.self, forKey: .apiKey) ?? ""
         deepLBaseURL = try container.decodeIfPresent(String.self, forKey: .deepLBaseURL) ?? ""
         deepLAPIKey = try container.decodeIfPresent(String.self, forKey: .deepLAPIKey) ?? ""
@@ -181,6 +188,7 @@ struct Preferences: Codable, Equatable {
         shortcutShowWindow = try container.decodeIfPresent(KeyboardShortcut.self, forKey: .shortcutShowWindow)
         shortcutToggleMode = try container.decodeIfPresent(KeyboardShortcut.self, forKey: .shortcutToggleMode)
         shortcutQuickCopy = try container.decodeIfPresent(KeyboardShortcut.self, forKey: .shortcutQuickCopy)
+        shortcutScreenshotOCR = try container.decodeIfPresent(KeyboardShortcut.self, forKey: .shortcutScreenshotOCR)
         sendKey = try container.decodeIfPresent(SendKey.self, forKey: .sendKey) ?? .cmdEnter
         historyMaxRecords = try container.decodeIfPresent(Int.self, forKey: .historyMaxRecords) ?? 200
     }

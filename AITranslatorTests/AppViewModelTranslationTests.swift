@@ -250,11 +250,13 @@ private final class HotkeyManagerSpy: HotkeyManaging {
     var onShowWindow: (() -> Void)?
     var onToggleMode: (() -> Void)?
     var onQuickCopy: (() -> Void)?
+    var onScreenshotOCR: (() -> Void)?
 
     func apply(
         show: KeyboardShortcut?,
         toggle: KeyboardShortcut?,
-        copy: KeyboardShortcut?
+        copy: KeyboardShortcut?,
+        screenshotOCR: KeyboardShortcut?
     ) {}
 
     func suspendHotkeys() {}

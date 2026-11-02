@@ -52,6 +52,10 @@ struct AITranslatorApp: App {
                     viewModel.copyOutputToClipboard()
                 }
                 // 不再为复制输出设置硬编码的快捷键，使用用户在设置中配置的全局快捷键
+
+                Button(L10n.tr("cmd.screenshotOCR", lang: viewModel.preferences.appLanguage)) {
+                    viewModel.captureScreenshotOCR()
+                }
             }
         }
     }

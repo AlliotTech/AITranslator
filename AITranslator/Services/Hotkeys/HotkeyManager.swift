@@ -10,18 +10,21 @@ final class HotkeyManager: HotkeyManaging {
         static let showHide = KeyboardShortcut(keyCode: 13, carbonModifiers: UInt32(cmdKey | shiftKey)) // ⌘⇧W
         static let toggleMode = KeyboardShortcut(keyCode: 46, carbonModifiers: UInt32(controlKey | optionKey)) // ⌃⌥M
         static let quickCopy = KeyboardShortcut(keyCode: 8, carbonModifiers: UInt32(controlKey | optionKey)) // ⌃⌥C
+        static let screenshotOCR = KeyboardShortcut(keyCode: 31, carbonModifiers: UInt32(controlKey | optionKey)) // ⌃⌥O
     }
 
     enum Action: UInt32 {
         case showWindow = 1
         case toggleMode = 2
         case quickCopy = 3
+        case screenshotOCR = 4
     }
 
     private var eventHandler: EventHandlerRef?
     private var showRef: EventHotKeyRef?
     private var toggleRef: EventHotKeyRef?
     private var copyRef: EventHotKeyRef?
+    private var screenshotRef: EventHotKeyRef?
     private var localToggleMonitor: Any?
     private var localQuickCopyMonitor: Any?
 
@@ -31,12 +34,13 @@ final class HotkeyManager: HotkeyManaging {
     var onShowWindow: (() -> Void)?
     var onToggleMode: (() -> Void)?
     var onQuickCopy: (() -> Void)?
+    var onScreenshotOCR: (() -> Void)?
 
     private init() {
         installHandlerIfNeeded()
     }
 
-    func apply(show: KeyboardShortcut?, toggle: KeyboardShortcut?, copy: KeyboardShortcut?) {
+    func apply(show: KeyboardShortcut?, toggle: KeyboardShortcut?, copy: KeyboardShortcut?, screenshotOCR: KeyboardShortcut?) {
         unregisterAll()
         if let showShortcut = show { register(shortcut: showShortcut, action: .showWindow, storeIn: &showRef) }
         if let toggleShortcut = toggle {
@@ -69,18 +73,22 @@ final class HotkeyManager: HotkeyManaging {
                 return event
             }
         }
+        if let screenshotShortcut = screenshotOCR {
+            register(shortcut: screenshotShortcut, action: .screenshotOCR, storeIn: &screenshotRef)
+        }
     }
 
     func unregisterAll() {
         if let hotKeyRef = showRef { UnregisterEventHotKey(hotKeyRef) }
         if let hotKeyRef = toggleRef { UnregisterEventHotKey(hotKeyRef) }
         if let hotKeyRef = copyRef { UnregisterEventHotKey(hotKeyRef) }
+        if let hotKeyRef = screenshotRef { UnregisterEventHotKey(hotKeyRef) }
         if let monitor = localToggleMonitor { NSEvent.removeMonitor(monitor) }
         if let monitor = localQuickCopyMonitor { NSEvent.removeMonitor(monitor) }
         showRef = nil
         toggleRef = nil
         copyRef = nil
-        localToggleMonitor = nil
+        screenshotRef = nil
         localQuickCopyMonitor = nil
     }
 
@@ -111,6 +119,7 @@ final class HotkeyManager: HotkeyManaging {
             case .showWindow: manager.onShowWindow?()
             case .toggleMode: manager.onToggleMode?()
             case .quickCopy: manager.onQuickCopy?()
+            case .screenshotOCR: manager.onScreenshotOCR?()
             case .none: break
             }
             return noErr

@@ -35,11 +35,13 @@ protocol HotkeyManaging: AnyObject {
     var onShowWindow: (() -> Void)? { get set }
     var onToggleMode: (() -> Void)? { get set }
     var onQuickCopy: (() -> Void)? { get set }
+    var onScreenshotOCR: (() -> Void)? { get set }
 
     func apply(
         show: KeyboardShortcut?,
         toggle: KeyboardShortcut?,
-        copy: KeyboardShortcut?
+        copy: KeyboardShortcut?,
+        screenshotOCR: KeyboardShortcut?
     )
 
     /// 暂停快捷键功能（用于录制快捷键时避免触发现有快捷键）

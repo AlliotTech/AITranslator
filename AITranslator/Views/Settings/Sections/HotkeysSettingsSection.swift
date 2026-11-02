@@ -7,6 +7,7 @@ struct HotkeysSettingsSection: View {
     @Binding var showWindowHelpPresented: Bool
     @Binding var toggleModeHelpPresented: Bool
     @Binding var quickCopyHelpPresented: Bool
+    @Binding var screenshotOCRHelpPresented: Bool
     @Environment(\.l10n)
     private var l10n
 
@@ -79,6 +80,25 @@ struct HotkeysSettingsSection: View {
                             .buttonCursor()
                             .fixedSize()
                         Button(l10n("common.restoreDefault")) { draft.shortcutQuickCopy = HotkeyManager.Defaults.quickCopy }
+                            .buttonCursor()
+                            .fixedSize()
+                    }
+                    .settingsFieldControl()
+                }
+
+                GridRow {
+                    helpLabel(
+                        "settings.hotkeys.screenshotOCR",
+                        helpKey: "settings.hotkeys.screenshotOCR.help",
+                        isPresented: $screenshotOCRHelpPresented
+                    )
+                    HStack(spacing: 8) {
+                        ShortcutRecorderField(value: $draft.shortcutScreenshotOCR, placeholder: l10n("settings.hotkeys.placeholder"))
+                            .frame(maxWidth: .infinity)
+                        Button(l10n("common.clear")) { draft.shortcutScreenshotOCR = nil }
+                            .buttonCursor()
+                            .fixedSize()
+                        Button(l10n("common.restoreDefault")) { draft.shortcutScreenshotOCR = HotkeyManager.Defaults.screenshotOCR }
                             .buttonCursor()
                             .fixedSize()
                     }

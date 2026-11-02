@@ -80,6 +80,7 @@ struct SettingsView: View {
     @State private var showWindowHelpPresented: Bool = false
     @State private var toggleModeHelpPresented: Bool = false
     @State private var quickCopyHelpPresented: Bool = false
+    @State private var screenshotOCRHelpPresented: Bool = false
     @State private var sendKeyHelpPresented: Bool = false
 
     enum ProxyTestState { case idle, testing, success, failure }
@@ -121,7 +122,8 @@ struct SettingsView: View {
                     sendKeyHelpPresented: $sendKeyHelpPresented,
                     showWindowHelpPresented: $showWindowHelpPresented,
                     toggleModeHelpPresented: $toggleModeHelpPresented,
-                    quickCopyHelpPresented: $quickCopyHelpPresented
+                    quickCopyHelpPresented: $quickCopyHelpPresented,
+                    screenshotOCRHelpPresented: $screenshotOCRHelpPresented
                 )
                 .tabItem { Label(l10n("settings.tab.hotkeys"), systemImage: "keyboard") }
             }
