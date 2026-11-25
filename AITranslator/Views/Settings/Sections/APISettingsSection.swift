@@ -7,6 +7,12 @@ enum APIConnectionTestState: Equatable {
     case failure(String)
 }
 
+enum ModelListState: Equatable {
+    case loading
+    case loaded([String])
+    case failed(String)
+}
+
 struct APISettingsSection: View {
     @Binding var draft: Preferences
     let viewModel: AppViewModel
@@ -15,6 +21,8 @@ struct APISettingsSection: View {
     @Binding var connectionTestState: APIConnectionTestState
     @Environment(\.l10n)
     private var l10n
+
+    @State private var modelListState: ModelListState = .loading
 
     var body: some View {
         SettingsPage(l10n("settings.api.title")) {
@@ -69,25 +77,34 @@ struct APISettingsSection: View {
 
         GridRow {
             fieldLabel("settings.api.model")
-            validatedField(
-                text: $draft.model,
-                placeholder: "settings.api.model.placeholder",
-                help: nil,
-                isValid: draft.isModelValid,
-                invalidKey: "settings.api.model.invalid"
-            )
+            HStack(spacing: 8) {
+                validatedField(
+                    text: $draft.model,
+                    placeholder: "settings.api.model.placeholder",
+                    help: nil,
+                    isValid: draft.isModelValid,
+                    invalidKey: "settings.api.model.invalid"
+                )
+                modelListMenu(fieldText: $draft.model)
+            }
             .settingsFieldControl()
+            .task {
+                await fetchModelList()
+            }
         }
 
         GridRow {
             fieldLabel("settings.api.ocrModel")
-            validatedField(
-                text: $draft.ocrModel,
-                placeholder: "settings.api.ocrModel.placeholder",
-                help: "settings.api.ocrModel.help",
-                isValid: true,
-                invalidKey: ""
-            )
+            HStack(spacing: 8) {
+                validatedField(
+                    text: $draft.ocrModel,
+                    placeholder: "settings.api.ocrModel.placeholder",
+                    help: "settings.api.ocrModel.help",
+                    isValid: true,
+                    invalidKey: ""
+                )
+                modelListMenu(fieldText: $draft.ocrModel)
+            }
             .settingsFieldControl()
         }
 
@@ -309,5 +326,59 @@ struct APISettingsSection: View {
         RoundedRectangle(cornerRadius: 6, style: .continuous)
             .stroke(Color.red.opacity(0.6), lineWidth: 1)
             .opacity(isValid ? 0 : 1)
+    }
+
+    /// 下拉选择模型：菜单内容在打开瞬间快照，列表依赖打开前的预取；
+    /// 菜单内"刷新列表"重新拉取，下次打开生效。
+    private func modelListMenu(fieldText: Binding<String>) -> some View {
+        Menu {
+            Button(l10n("settings.api.model.list.refresh")) {
+                Task { await fetchModelList() }
+            }
+            Divider()
+            modelListMenuItems(fieldText)
+        } label: {
+            Image(systemName: "chevron.down")
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .buttonCursor()
+        .help(l10n("settings.api.model.list.help"))
+    }
+
+    @ViewBuilder
+    private func modelListMenuItems(_ fieldText: Binding<String>) -> some View {
+        switch modelListState {
+        case .loading:
+            Text(l10n("settings.api.model.list.loading"))
+        case .loaded(let models):
+            if models.isEmpty {
+                Text(l10n("settings.api.model.list.empty"))
+            } else {
+                ForEach(models, id: \.self) { model in
+                    Button(model) {
+                        fieldText.wrappedValue = model
+                    }
+                }
+            }
+        case .failed(let message):
+            Text(message)
+        }
+    }
+
+    private func fetchModelList() async {
+        modelListState = .loading
+        do {
+            let models = try await ModelListClient.fetchModels(
+                baseURL: draft.baseURL,
+                apiKey: draft.apiKey,
+                proxy: draft.proxySettings
+            )
+            modelListState = .loaded(models)
+        } catch {
+            let prefix = l10n("settings.api.model.list.failed")
+            modelListState = .failed("\(prefix): \(error.localizedDescription)")
+        }
     }
 }

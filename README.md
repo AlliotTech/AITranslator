@@ -110,6 +110,7 @@ Optional developer tooling via `just` and `asdf`:
    - **DeepL API Pro**: translation plus polishing through DeepL Write
    - **DLX / Custom Compatible**: choose official `/v2` or Legacy DeepLX `/translate`, then declare translation-only or translation-plus-Write capability
 4. Use **Test Connection** for a DeepL provider. It sends fixed sample text, not the text in the main window.
+5. For **OpenAI Compatible**, click the chevron next to **Model** or **OCR Model** to fetch available models from the endpoint's `GET /v1/models` and pick one. Typing a model name manually still works.
 
 #### DeepL Behavior and Limits
 
@@ -393,6 +394,7 @@ AI Translator 是一款原生 macOS 应用，支持 OpenAI 兼容 API 与 DeepL 
    - **DeepL API Pro**：支持翻译，并通过 DeepL Write 润色
    - **DLX / 自定义兼容服务**：明确选择官方 `/v2` 或 Legacy DeepLX `/translate` 协议，并声明仅翻译或翻译 + Write
 4. DeepL 服务可使用“测试连接”。测试只发送固定样例文本，不会使用主窗口内容。
+5. **OpenAI 兼容**服务可点击**模型**或 **OCR 模型**旁的下拉按钮，从接口的 `GET /v1/models` 获取可用模型列表并选择；手动输入模型名的方式保持不变。
 
 #### DeepL 行为与限制
 
