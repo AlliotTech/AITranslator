@@ -41,7 +41,8 @@ enum ModelListClient {
     static func fetchModels(
         baseURL: String,
         apiKey: String,
-        proxy: HTTPClient.ProxySettings?
+        proxy: HTTPClient.ProxySettings?,
+        userAgent: String?
     ) async throws -> [String] {
         guard let url = modelsURL(fromEndpoint: baseURL) else {
             throw URLError(.badURL)
@@ -53,6 +54,9 @@ enum ModelListClient {
         request.setValue("application/json", forHTTPHeaderField: "Accept")
         if !apiKey.isEmpty {
             request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        }
+        if let userAgent, !userAgent.isEmpty {
+            request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
         }
 
         let (data, response) = try await HTTPClient.data(for: request, proxy: proxy)

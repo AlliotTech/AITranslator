@@ -23,7 +23,8 @@ struct OpenAIClient: OpenAIStreamingClient {
         model: String,
         messages: [RequestBody.Message],
         parameters: AITaskParameters = .default,
-        proxy: HTTPClient.ProxySettings? = nil
+        proxy: HTTPClient.ProxySettings? = nil,
+        userAgent: String?
     ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             let task = Task {
@@ -33,6 +34,9 @@ struct OpenAIClient: OpenAIStreamingClient {
                     request.httpMethod = "POST"
                     request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
                     request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    if let userAgent, !userAgent.isEmpty {
+                        request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+                    }
                     let adjustedParams = ModelConstraints.adjustParameters(model: model, original: parameters)
                     let body = RequestBody(
                         model: model,

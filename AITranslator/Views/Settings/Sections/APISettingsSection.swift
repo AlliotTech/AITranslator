@@ -118,6 +118,18 @@ struct APISettingsSection: View {
             )
             .settingsFieldControl()
         }
+
+        GridRow {
+            fieldLabel("settings.api.userAgent")
+            validatedField(
+                text: $draft.customUserAgent,
+                placeholder: "settings.api.userAgent.placeholder",
+                help: "settings.api.userAgent.help",
+                isValid: true,
+                invalidKey: ""
+            )
+            .settingsFieldControl()
+        }
     }
 
     @ViewBuilder private var deepLFields: some View {
@@ -373,7 +385,8 @@ struct APISettingsSection: View {
             let models = try await ModelListClient.fetchModels(
                 baseURL: draft.baseURL,
                 apiKey: draft.apiKey,
-                proxy: draft.proxySettings
+                proxy: draft.proxySettings,
+                userAgent: draft.customUserAgentHeader
             )
             modelListState = .loaded(models)
         } catch {

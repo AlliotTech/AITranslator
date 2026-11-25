@@ -89,7 +89,8 @@ extension ScreenshotOCRClient {
         baseURL: String,
         apiKey: String,
         model: String,
-        proxy: HTTPClient.ProxySettings?
+        proxy: HTTPClient.ProxySettings?,
+        userAgent: String?
     ) async throws -> String {
         guard let url = URL(string: baseURL) else { throw URLError(.badURL) }
         var request = URLRequest(url: url)
@@ -98,6 +99,9 @@ extension ScreenshotOCRClient {
             request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         }
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let userAgent, !userAgent.isEmpty {
+            request.setValue(userAgent, forHTTPHeaderField: "User-Agent")
+        }
         request.timeoutInterval = 120
 
         let dataURI = "data:\(mimeType);base64,\(imageData.base64EncodedString())"

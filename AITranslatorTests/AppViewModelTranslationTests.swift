@@ -216,7 +216,8 @@ private final class OpenAIClientSpy: OpenAIStreamingClient {
         model: String,
         messages: [OpenAIClient.RequestBody.Message],
         parameters: AITaskParameters,
-        proxy: HTTPClient.ProxySettings?
+        proxy: HTTPClient.ProxySettings?,
+        userAgent: String?
     ) -> AsyncThrowingStream<String, Error> {
         capturedMessages = messages
         let deltas = self.deltas

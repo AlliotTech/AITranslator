@@ -58,6 +58,7 @@ struct Preferences: Codable, Equatable {
     var model: String
     var ocrModel: String
     var apiKey: String
+    var customUserAgent: String
 
     // DeepL-compatible API
     var deepLBaseURL: String
@@ -97,7 +98,7 @@ struct Preferences: Codable, Equatable {
     var historyMaxRecords: Int
 
     enum CodingKeys: CodingKey {
-        case translationProvider, appLanguage, baseURL, model, ocrModel, apiKey
+        case translationProvider, appLanguage, baseURL, model, ocrModel, apiKey, customUserAgent
         case deepLBaseURL, deepLAPIKey, deepLAPIFamily, deepLCustomCapability
         case detectionEngine, defaultTargetLanguage, proxyType, proxyHost, proxyPort
         case proxyUsername, proxyPassword, noProxyTargets, alwaysOnTop, splitRatio
@@ -111,6 +112,7 @@ struct Preferences: Codable, Equatable {
         model: String = "gpt-5-chat",
         ocrModel: String = "gpt-4o-mini",
         apiKey: String = "",
+        customUserAgent: String = "",
         deepLBaseURL: String = "",
         deepLAPIKey: String = "",
         deepLAPIFamily: DeepLAPIFamily = .officialV2,
@@ -138,6 +140,7 @@ struct Preferences: Codable, Equatable {
         self.model = model
         self.ocrModel = ocrModel
         self.apiKey = apiKey
+        self.customUserAgent = customUserAgent
         self.deepLBaseURL = deepLBaseURL
         self.deepLAPIKey = deepLAPIKey
         self.deepLAPIFamily = deepLAPIFamily
@@ -168,6 +171,7 @@ struct Preferences: Codable, Equatable {
         model = try container.decodeIfPresent(String.self, forKey: .model) ?? "gpt-5-chat"
         ocrModel = try container.decodeIfPresent(String.self, forKey: .ocrModel) ?? "gpt-4o-mini"
         apiKey = try container.decodeIfPresent(String.self, forKey: .apiKey) ?? ""
+        customUserAgent = try container.decodeIfPresent(String.self, forKey: .customUserAgent) ?? ""
         deepLBaseURL = try container.decodeIfPresent(String.self, forKey: .deepLBaseURL) ?? ""
         deepLAPIKey = try container.decodeIfPresent(String.self, forKey: .deepLAPIKey) ?? ""
         deepLAPIFamily = try container.decodeIfPresent(DeepLAPIFamily.self, forKey: .deepLAPIFamily) ?? .officialV2

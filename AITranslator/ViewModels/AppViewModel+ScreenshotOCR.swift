@@ -47,7 +47,8 @@ extension AppViewModel {
                 baseURL: preferences.baseURL,
                 apiKey: preferences.apiKey,
                 model: ocrModel.isEmpty ? preferences.model : ocrModel,
-                proxy: preferences.proxySettings
+                proxy: preferences.proxySettings,
+                userAgent: preferences.customUserAgentHeader
             )
 
             guard !Task.isCancelled else { return }

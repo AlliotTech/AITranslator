@@ -26,6 +26,12 @@ extension Preferences {
         )
     }
 
+    /// 自定义 User-Agent 请求头（去首尾空白；空 = 使用系统默认）
+    var customUserAgentHeader: String? {
+        let trimmed = customUserAgent.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
     /// 当前偏好的 DeepL 服务配置
     var deepLConfiguration: DeepLServiceConfiguration {
         DeepLServiceConfiguration(

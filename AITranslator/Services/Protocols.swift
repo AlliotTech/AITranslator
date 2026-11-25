@@ -7,7 +7,8 @@ protocol OpenAIStreamingClient {
         model: String,
         messages: [OpenAIClient.RequestBody.Message],
         parameters: AITaskParameters,
-        proxy: HTTPClient.ProxySettings?
+        proxy: HTTPClient.ProxySettings?,
+        userAgent: String?
     ) -> AsyncThrowingStream<String, Error>
 }
 

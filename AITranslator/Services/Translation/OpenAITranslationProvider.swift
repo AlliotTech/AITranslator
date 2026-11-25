@@ -28,7 +28,8 @@ struct OpenAITranslationProvider: TranslationProvider {
             model: preferences.model,
             messages: Self.messages(for: request),
             parameters: AITaskParameters.parameters(for: request.mode),
-            proxy: request.proxy
+            proxy: request.proxy,
+            userAgent: preferences.customUserAgentHeader
         )
 
         return AsyncThrowingStream { continuation in
